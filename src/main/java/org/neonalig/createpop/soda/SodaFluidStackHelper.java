@@ -47,6 +47,20 @@ public final class SodaFluidStackHelper {
         return soda(FluidType.BUCKET_VOLUME, getSodaData(stack));
     }
 
+    public static ItemStack sodaBottle(FluidStack stack) {
+        return sodaBottle(getSodaData(stack));
+    }
+
+    public static ItemStack sodaBottle(SodaData data) {
+        ItemStack stack = new ItemStack(ModFluids.SODA_BOTTLE.get());
+        stack.set(ModDataComponents.SODA_DATA.get(), data);
+        return stack;
+    }
+
+    public static FluidStack sodaBottleFluid(ItemStack stack) {
+        return soda(org.neonalig.createpop.compat.create.DynamicSodaMixing.DRINK_AMOUNT, getSodaData(stack));
+    }
+
     public static SodaData getSodaData(ItemStack stack) {
         return stack.getOrDefault(ModDataComponents.SODA_DATA.get(), SodaData.EMPTY);
     }

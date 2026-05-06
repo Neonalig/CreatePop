@@ -9,6 +9,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
@@ -16,6 +19,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.DataComponentFluidIngredient;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.neonalig.createpop.CreatePop;
 import org.neonalig.createpop.component.SodaData;
 import org.neonalig.createpop.soda.SodaEffectReducer;
@@ -53,8 +57,37 @@ public final class DynamicSodaMixing {
             return base;
         }
 
+        Optional<MixingRecipe> dye = findSodaDyeRecipe(inputs, findDyeInput(availableItems(basin)));
+        if (dye.isPresent()) {
+            return dye;
+        }
+
         long seed = level instanceof ServerLevel serverLevel ? serverLevel.getSeed() : 0L;
         return findSodaCombinationRecipe(inputs, seed);
+    }
+
+    private static Optional<MixingRecipe> findSodaDyeRecipe(List<SodaInput> inputs, Optional<DyeInput> dyeInput) {
+        if (dyeInput.isEmpty()) {
+            return Optional.empty();
+        }
+
+        DyeInput dye = dyeInput.get();
+        for (SodaInput input : inputs) {
+            if (!input.soda()) {
+                continue;
+            }
+
+            SodaData recolored = recolor(input.data(), dye.color());
+            FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, recolored);
+            return Optional.of(recipe(
+                    "soda_dye",
+                    output,
+                    List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
+                    Ingredient.of(dye.item())
+            ));
+        }
+
+        return Optional.empty();
     }
 
     private static Optional<MixingRecipe> findCarbonatedPotionRecipe(List<SodaInput> inputs) {
@@ -135,6 +168,44 @@ public final class DynamicSodaMixing {
         return fluids;
     }
 
+    private static List<ItemStack> availableItems(BasinBlockEntity basin) {
+        IItemHandler handler = basin.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, basin.getBlockPos(), null);
+        if (handler == null) {
+            return List.of();
+        }
+
+        List<ItemStack> items = new ArrayList<>();
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (!stack.isEmpty()) {
+                items.add(stack.copy());
+            }
+        }
+        return items;
+    }
+
+    private static Optional<DyeInput> findDyeInput(List<ItemStack> items) {
+        for (ItemStack stack : items) {
+            if (stack.getItem() instanceof DyeItem dyeItem) {
+                return Optional.of(new DyeInput(dyeItem, dyeItem.getDyeColor().getFireworkColor()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static SodaData recolor(SodaData data, int dyeColor) {
+        int mixedColor = weightedAverageColor(data.color(), SodaData.withAlpha(dyeColor), 1, 2);
+        return new SodaData(data.effects(), mixedColor, data.instability());
+    }
+
+    private static int weightedAverageColor(int first, int second, int firstWeight, int secondWeight) {
+        int totalWeight = Math.max(1, firstWeight + secondWeight);
+        int r = ((((first >> 16) & 0xFF) * firstWeight) + (((second >> 16) & 0xFF) * secondWeight)) / totalWeight;
+        int g = ((((first >> 8) & 0xFF) * firstWeight) + (((second >> 8) & 0xFF) * secondWeight)) / totalWeight;
+        int b = (((first & 0xFF) * firstWeight) + ((second & 0xFF) * secondWeight)) / totalWeight;
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
 
     private static Optional<SodaInput> asSodaInput(FluidStack stack) {
         if (SodaFluidStackHelper.isCarbonatedWater(stack)) {
@@ -164,6 +235,9 @@ public final class DynamicSodaMixing {
     }
 
     private record SodaInput(FluidStack stack, SodaData data, boolean carbonatedWater, boolean soda, boolean potion) {
+    }
+
+    private record DyeInput(Item item, int color) {
     }
 }
 

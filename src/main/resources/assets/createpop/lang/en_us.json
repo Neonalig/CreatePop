@@ -4,6 +4,7 @@
 	"block.createpop.soda": "Soda",
 	"item.createpop.carbonated_water_bucket": "Carbonated Water Bucket",
 	"item.createpop.soda_bucket": "Soda Bucket",
+	"item.createpop.soda_bottle": "Soda Bottle",
 	"fluid_type.createpop.carbonated_water": "Carbonated Water",
 	"fluid_type.createpop.soda": "Soda"
 }

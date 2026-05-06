@@ -1,5 +1,6 @@
 ﻿{
   "loader": "neoforge:fluid_container",
+  "parent": "minecraft:item/generated",
   "fluid": "createpop:carbonated_water",
   "textures": {
     "particle": "minecraft:item/bucket",
