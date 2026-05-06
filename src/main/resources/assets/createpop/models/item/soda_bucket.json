@@ -1,0 +1,11 @@
+﻿{
+  "loader": "neoforge:fluid_container",
+  "fluid": "createpop:soda",
+  "textures": {
+    "particle": "minecraft:item/bucket",
+    "base": "minecraft:item/bucket",
+    "fluid": "neoforge:item/mask/bucket_fluid",
+    "cover": "neoforge:item/mask/bucket_fluid_cover"
+  }
+}
+

@@ -4,8 +4,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+import net.neoforged.neoforge.client.model.DynamicFluidContainerModel;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.neonalig.createpop.CreatePop;
 import org.neonalig.createpop.component.SodaData;
@@ -50,6 +52,12 @@ public final class ModClientEvents {
                 return SodaFluidStackHelper.getSodaData(stack).color();
             }
         }, ModFluids.SODA_TYPE.get());
+    }
+
+    @SubscribeEvent
+    public static void registerItemColors(RegisterColorHandlersEvent.Item event) {
+        DynamicFluidContainerModel.Colors colors = new DynamicFluidContainerModel.Colors();
+        event.register(colors, ModFluids.CARBONATED_WATER_BUCKET.get(), ModFluids.SODA_BUCKET.get());
     }
 
     private record StaticFluidExtensions(int tint) implements IClientFluidTypeExtensions {

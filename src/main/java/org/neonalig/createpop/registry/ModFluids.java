@@ -17,6 +17,7 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import org.neonalig.createpop.CreatePop;
+import org.neonalig.createpop.soda.SodaFluidType;
 
 public final class ModFluids {
     private static final DeferredRegister<Fluid> FLUIDS = DeferredRegister.create(Registries.FLUID, CreatePop.MODID);
@@ -28,7 +29,7 @@ public final class ModFluids {
     );
     public static final DeferredHolder<FluidType, FluidType> SODA_TYPE = FLUID_TYPES.register(
             "soda",
-            () -> new FluidType(FluidType.Properties.create().density(1050).viscosity(1200))
+            () -> new SodaFluidType(FluidType.Properties.create().density(1050).viscosity(1200))
     );
 
     public static final DeferredHolder<Fluid, BaseFlowingFluid.Source> CARBONATED_WATER = FLUIDS.register(

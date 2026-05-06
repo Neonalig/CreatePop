@@ -9,18 +9,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.fluids.crafting.DataComponentFluidIngredient;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
-import net.neoforged.neoforge.items.IItemHandler;
 import org.neonalig.createpop.CreatePop;
 import org.neonalig.createpop.component.SodaData;
 import org.neonalig.createpop.soda.SodaEffectReducer;
@@ -31,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 
 public final class DynamicSodaMixing {
-    public static final int WATER_AMOUNT = FluidType.BUCKET_VOLUME;
     public static final int DRINK_AMOUNT = 250;
 
     private DynamicSodaMixing() {
@@ -46,16 +40,6 @@ public final class DynamicSodaMixing {
         List<FluidStack> fluids = availableFluids(basin);
         if (fluids.isEmpty()) {
             return Optional.empty();
-        }
-
-        if (hasDiamond(basin)) {
-            Optional<FluidStack> water = fluids.stream()
-                    .filter(stack -> stack.getFluid() == Fluids.WATER && stack.getAmount() >= WATER_AMOUNT)
-                    .findFirst();
-            if (water.isPresent()) {
-                FluidStack output = SodaFluidStackHelper.carbonatedWater(WATER_AMOUNT);
-                return Optional.of(recipe("carbonation", output, List.of(exactFluid(water.get(), WATER_AMOUNT)), Ingredient.of(Items.DIAMOND)));
-            }
         }
 
         List<SodaInput> inputs = fluids.stream()
@@ -151,20 +135,6 @@ public final class DynamicSodaMixing {
         return fluids;
     }
 
-    private static boolean hasDiamond(BasinBlockEntity basin) {
-        IItemHandler handler = basin.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, basin.getBlockPos(), null);
-        if (handler == null) {
-            return false;
-        }
-
-        for (int slot = 0; slot < handler.getSlots(); slot++) {
-            ItemStack stack = handler.getStackInSlot(slot);
-            if (stack.is(Items.DIAMOND)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private static Optional<SodaInput> asSodaInput(FluidStack stack) {
         if (SodaFluidStackHelper.isCarbonatedWater(stack)) {
