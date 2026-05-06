@@ -96,12 +96,15 @@ public final class DynamicSodaMixing {
             if (!first.soda()) {
                 continue;
             }
-            for (int j = i; j < inputs.size(); j++) {
+            for (int j = i + 1; j < inputs.size(); j++) {
                 SodaInput second = inputs.get(j);
-                if (second == first && first.stack().getAmount() < DRINK_AMOUNT * 2) {
+                if (!second.soda() && !second.potion()) {
                     continue;
                 }
-                if (!second.soda() && !second.potion()) {
+                // Prevent same-for-same mixes: if the two fluid stacks are the same fluid
+                // with identical data components (e.g., output soda leaking back as an input,
+                // or two tanks holding the same soda), skip to avoid draining the basin.
+                if (FluidStack.isSameFluidSameComponents(first.stack(), second.stack())) {
                     continue;
                 }
                 SodaData mixed = SodaEffectReducer.mix(first.data(), second.data(), seed);
