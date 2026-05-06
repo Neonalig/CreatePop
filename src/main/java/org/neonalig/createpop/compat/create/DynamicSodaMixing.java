@@ -1,0 +1,196 @@
+package org.neonalig.createpop.compat.create;
+
+import com.simibubi.create.content.kinetics.mixer.MixingRecipe;
+import com.simibubi.create.content.processing.basin.BasinBlockEntity;
+import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidType;
+import net.neoforged.neoforge.fluids.crafting.DataComponentFluidIngredient;
+import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
+import net.neoforged.neoforge.items.IItemHandler;
+import org.neonalig.createpop.CreatePop;
+import org.neonalig.createpop.component.SodaData;
+import org.neonalig.createpop.soda.SodaEffectReducer;
+import org.neonalig.createpop.soda.SodaFluidStackHelper;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+public final class DynamicSodaMixing {
+    public static final int WATER_AMOUNT = FluidType.BUCKET_VOLUME;
+    public static final int DRINK_AMOUNT = 250;
+
+    private DynamicSodaMixing() {
+    }
+
+    public static Optional<MixingRecipe> findRecipe(BasinBlockEntity basin) {
+        Level level = basin.getLevel();
+        if (level == null) {
+            return Optional.empty();
+        }
+
+        List<FluidStack> fluids = availableFluids(basin);
+        if (fluids.isEmpty()) {
+            return Optional.empty();
+        }
+
+        if (hasDiamond(basin)) {
+            Optional<FluidStack> water = fluids.stream()
+                    .filter(stack -> stack.getFluid() == Fluids.WATER && stack.getAmount() >= WATER_AMOUNT)
+                    .findFirst();
+            if (water.isPresent()) {
+                FluidStack output = SodaFluidStackHelper.carbonatedWater(WATER_AMOUNT);
+                return Optional.of(recipe("carbonation", output, List.of(exactFluid(water.get(), WATER_AMOUNT)), Ingredient.of(Items.DIAMOND)));
+            }
+        }
+
+        List<SodaInput> inputs = fluids.stream()
+                .filter(stack -> stack.getAmount() >= DRINK_AMOUNT)
+                .map(DynamicSodaMixing::asSodaInput)
+                .flatMap(Optional::stream)
+                .toList();
+
+        Optional<MixingRecipe> base = findCarbonatedPotionRecipe(inputs);
+        if (base.isPresent()) {
+            return base;
+        }
+
+        long seed = level instanceof ServerLevel serverLevel ? serverLevel.getSeed() : 0L;
+        return findSodaCombinationRecipe(inputs, seed);
+    }
+
+    private static Optional<MixingRecipe> findCarbonatedPotionRecipe(List<SodaInput> inputs) {
+        for (SodaInput first : inputs) {
+            if (!first.carbonatedWater()) {
+                continue;
+            }
+            for (SodaInput second : inputs) {
+                if (second == first || !second.potion()) {
+                    continue;
+                }
+                SodaData data = SodaEffectReducer.baseFromPotion(second.data().effects(), second.data().color());
+                FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, data);
+                return Optional.of(recipe("soda_base", output, List.of(exactFluid(first.stack(), DRINK_AMOUNT), exactFluid(second.stack(), DRINK_AMOUNT))));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<MixingRecipe> findSodaCombinationRecipe(List<SodaInput> inputs, long seed) {
+        for (int i = 0; i < inputs.size(); i++) {
+            SodaInput first = inputs.get(i);
+            if (!first.soda()) {
+                continue;
+            }
+            for (int j = i; j < inputs.size(); j++) {
+                SodaInput second = inputs.get(j);
+                if (second == first && first.stack().getAmount() < DRINK_AMOUNT * 2) {
+                    continue;
+                }
+                if (!second.soda() && !second.potion()) {
+                    continue;
+                }
+                SodaData mixed = SodaEffectReducer.mix(first.data(), second.data(), seed);
+                FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, mixed);
+                return Optional.of(recipe("soda_mix", output, List.of(exactFluid(first.stack(), DRINK_AMOUNT), exactFluid(second.stack(), DRINK_AMOUNT))));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static MixingRecipe recipe(String name, FluidStack output, List<SizedFluidIngredient> fluids, Ingredient... items) {
+        StandardProcessingRecipe.Builder<MixingRecipe> builder = new StandardProcessingRecipe.Builder<>(
+                MixingRecipe::new,
+                ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "dynamic/" + name)
+        ).withFluidIngredients(NonNullList.of(new SizedFluidIngredient(DataComponentFluidIngredient.of(true, output), output.getAmount()), fluids.toArray(SizedFluidIngredient[]::new)))
+                .withFluidOutputs(output)
+                .duration(100);
+
+        for (Ingredient item : items) {
+            builder.require(item);
+        }
+
+        return builder.build();
+    }
+
+    private static SizedFluidIngredient exactFluid(FluidStack stack, int amount) {
+        FluidStack copy = stack.copyWithAmount(amount);
+        return new SizedFluidIngredient(DataComponentFluidIngredient.of(true, copy), amount);
+    }
+
+    private static List<FluidStack> availableFluids(BasinBlockEntity basin) {
+        var handler = basin.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, basin.getBlockPos(), null);
+        if (handler == null) {
+            return List.of();
+        }
+
+        List<FluidStack> fluids = new ArrayList<>();
+        for (int tank = 0; tank < handler.getTanks(); tank++) {
+            FluidStack stack = handler.getFluidInTank(tank);
+            if (!stack.isEmpty()) {
+                fluids.add(stack.copy());
+            }
+        }
+        return fluids;
+    }
+
+    private static boolean hasDiamond(BasinBlockEntity basin) {
+        IItemHandler handler = basin.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, basin.getBlockPos(), null);
+        if (handler == null) {
+            return false;
+        }
+
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (stack.is(Items.DIAMOND)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Optional<SodaInput> asSodaInput(FluidStack stack) {
+        if (SodaFluidStackHelper.isCarbonatedWater(stack)) {
+            return Optional.of(new SodaInput(stack, SodaData.EMPTY, true, false, false));
+        }
+        if (SodaFluidStackHelper.isSoda(stack)) {
+            return Optional.of(new SodaInput(stack, SodaFluidStackHelper.getSodaData(stack), false, true, false));
+        }
+
+        PotionContents potion = stack.get(DataComponents.POTION_CONTENTS);
+        if (potion == null || !potion.hasEffects()) {
+            return Optional.empty();
+        }
+
+        List<MobEffectInstance> tierOneEffects = new ArrayList<>();
+        for (MobEffectInstance effect : potion.getAllEffects()) {
+            if (effect.getAmplifier() == 0 && effect.getEffect().value().getCategory() == MobEffectCategory.BENEFICIAL) {
+                tierOneEffects.add(new MobEffectInstance(effect));
+            }
+        }
+
+        if (tierOneEffects.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new SodaInput(stack, SodaData.ofPotion(tierOneEffects, potion.getColor()), false, false, true));
+    }
+
+    private record SodaInput(FluidStack stack, SodaData data, boolean carbonatedWater, boolean soda, boolean potion) {
+    }
+}
+

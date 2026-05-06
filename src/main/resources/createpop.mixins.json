@@ -4,6 +4,7 @@
 	"package": "org.neonalig.createpop.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
+		"MechanicalMixerBlockEntityMixin"
 	],
 	"client": [
 	],

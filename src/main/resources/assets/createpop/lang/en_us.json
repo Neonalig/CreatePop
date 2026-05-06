@@ -1,5 +1,11 @@
 {
 	"itemGroup.createpop": "Example Mod Tab",
 	"block.createpop.example_block": "Example Block",
-	"item.createpop.example_item": "Example Item"
+	"item.createpop.example_item": "Example Item",
+	"block.createpop.carbonated_water": "Carbonated Water",
+	"block.createpop.soda": "Soda",
+	"item.createpop.carbonated_water_bucket": "Carbonated Water Bucket",
+	"item.createpop.soda_bucket": "Soda Bucket",
+	"fluid_type.createpop.carbonated_water": "Carbonated Water",
+	"fluid_type.createpop.soda": "Soda"
 }
