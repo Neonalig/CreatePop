@@ -2,16 +2,17 @@ package org.neonalig.createpop.item;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.protocol.game.ClientboundOpenBookPacket;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.Filterable;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.WrittenBookItem;
 import net.minecraft.world.item.component.WrittenBookContent;
@@ -45,12 +46,11 @@ public class BrewersNotebookItem extends WrittenBookItem {
             }
         }
 
-        ItemStack viewBook = new ItemStack(Items.WRITTEN_BOOK);
-        viewBook.set(DataComponents.WRITTEN_BOOK_CONTENT, createNotebookContent(stack));
+        stack.set(DataComponents.WRITTEN_BOOK_CONTENT, createNotebookContent(stack));
 
-        if (!level.isClientSide) {
-            player.openItemGui(viewBook, hand);
-            player.awardStat(Stats.ITEM_USED.get(this));
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.connection.send(new ClientboundOpenBookPacket(hand));
+            serverPlayer.awardStat(Stats.ITEM_USED.get(this));
         }
 
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
