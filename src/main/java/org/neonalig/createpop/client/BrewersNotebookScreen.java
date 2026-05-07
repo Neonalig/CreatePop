@@ -571,6 +571,7 @@ public class BrewersNotebookScreen extends Screen {
         }
 
         guiGraphics.disableScissor();
+        drawDetailsScrollbar(guiGraphics, maxDetailsScroll(selected));
 
         int dividerY = notesHeaderY - 8;
         guiGraphics.fill(detailsLeft, dividerY, detailsLeft + detailsWidth, dividerY + 1, 0x553D2A1C);
@@ -682,6 +683,22 @@ public class BrewersNotebookScreen extends Screen {
     private void drawReadableString(GuiGraphics guiGraphics, String text, int x, int y, int color) {
         guiGraphics.drawString(font, text, x + 1, y + 1, SOFT_SHADOW, false);
         guiGraphics.drawString(font, text, x, y, color, false);
+    }
+
+    private void drawDetailsScrollbar(GuiGraphics guiGraphics, int maxScroll) {
+        int trackLeft = detailsPaneLeft + detailsPaneWidth - 8;
+        int trackTop = detailsTop;
+        int trackBottom = detailsContentBottom;
+        guiGraphics.fill(trackLeft, trackTop, trackLeft + 4, trackBottom, 0x221A120A);
+        if (maxScroll <= 0) {
+            return;
+        }
+        int trackHeight = trackBottom - trackTop;
+        int thumbHeight = Math.max(18, (trackHeight * trackHeight) / (trackHeight + maxScroll));
+        int thumbTravel = Math.max(0, trackHeight - thumbHeight);
+        int thumbTop = trackTop + (thumbTravel * detailsScroll / maxScroll);
+        guiGraphics.fill(trackLeft, thumbTop, trackLeft + 4, thumbTop + thumbHeight, ACCENT);
+        guiGraphics.fill(trackLeft, thumbTop, trackLeft + 4, thumbTop + 1, 0x55FFFFFF);
     }
 
     private boolean hasPendingChanges() {

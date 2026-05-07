@@ -5,6 +5,8 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.helpers.IPlatformFluidHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.ISubtypeInterpreter;
+import mezz.jei.api.constants.VanillaTypes;
+import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
@@ -69,6 +71,7 @@ import java.util.TreeSet;
  */
 @JeiPlugin
 public class CreatePopJeiPlugin implements IModPlugin {
+    private static IJeiRuntime ACTIVE_RUNTIME;
 
     private static final ResourceLocation PLUGIN_ID =
             ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei_plugin");
@@ -161,6 +164,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         this.jeiRuntime = jeiRuntime;
+        ACTIVE_RUNTIME = jeiRuntime;
         refreshRuntimeHintSodaIngredients();
         refreshRuntimeRecipes();
     }
@@ -170,8 +174,36 @@ public class CreatePopJeiPlugin implements IModPlugin {
         clearRuntimeHintSodaIngredients();
         clearInjectedRecipes();
         this.jeiRuntime = null;
+        ACTIVE_RUNTIME = null;
         this.lastForceUnlockAll = null;
         this.lastUnlockSnapshot = null;
+    }
+
+    public static boolean isRuntimeAvailable() {
+        return ACTIVE_RUNTIME != null;
+    }
+
+    @SuppressWarnings("unused")
+    public static boolean showItemRecipes(ItemStack stack) {
+        return showItemWithRole(stack, RecipeIngredientRole.OUTPUT);
+    }
+
+    @SuppressWarnings("unused")
+    public static boolean showItemUses(ItemStack stack) {
+        return showItemWithRole(stack, RecipeIngredientRole.INPUT);
+    }
+
+    private static boolean showItemWithRole(ItemStack stack, RecipeIngredientRole role) {
+        if (ACTIVE_RUNTIME == null || stack.isEmpty()) {
+            return false;
+        }
+        ItemStack displayStack = stack.copyWithCount(1);
+        ACTIVE_RUNTIME.getRecipesGui().show(
+                ACTIVE_RUNTIME.getJeiHelpers()
+                        .getFocusFactory()
+                        .createFocus(role, VanillaTypes.ITEM_STACK, displayStack)
+        );
+        return true;
     }
 
     /**

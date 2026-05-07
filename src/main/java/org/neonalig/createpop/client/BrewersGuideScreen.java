@@ -4,11 +4,16 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.compat.create.DynamicSodaMixing;
+import org.neonalig.createpop.registry.ModItems;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -23,12 +28,19 @@ public class BrewersGuideScreen extends Screen {
     private static final int MUTED = 0xFF6E5B43;
     private static final int SOFT_SHADOW = 0x66000000;
     private static final int TITLE_SHADOW = 0xCC000000;
+    private static final int LINK = 0xFF7F542F;
+    private static final int LINK_HOVER = 0xFFF4E7C0;
     private static final int SELECTION = 0xC46B8E23;
     private static final int HOVER = 0x6A8A5A30;
     private static final int ENTRY_HEIGHT = 22;
     private static final int VISIBLE_SECTIONS = 6;
 
+    private static int rememberedSelectedIndex;
+    private static int rememberedListScroll;
+    private static int rememberedDetailsScroll;
+
     private final List<Section> sections;
+    private final List<LinkRegion> activeLinks = new ArrayList<>();
 
     private int selectedIndex;
     private int listScroll;
@@ -50,15 +62,21 @@ public class BrewersGuideScreen extends Screen {
     private int detailsTop;
     private int detailsWidth;
     private int detailsContentBottom;
+    private boolean jeiLinksAvailable;
+    private LinkRegion hoveredLink;
 
     public BrewersGuideScreen() {
         super(Component.translatable("item.createpop.brewers_guide"));
         this.sections = createSections();
+        this.selectedIndex = rememberedSelectedIndex;
+        this.listScroll = rememberedListScroll;
+        this.detailsScroll = rememberedDetailsScroll;
     }
 
     @Override
     protected void init() {
         clearWidgets();
+        jeiLinksAvailable = queryJeiLinksAvailable();
 
         left = (width - WINDOW_WIDTH) / 2;
         top = (height - WINDOW_HEIGHT) / 2;
@@ -103,7 +121,16 @@ public class BrewersGuideScreen extends Screen {
     }
 
     @Override
+    public void onClose() {
+        rememberViewState();
+        super.onClose();
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (clickGuideLink(mouseX, mouseY)) {
+            return true;
+        }
         if (clickSection(mouseX, mouseY)) {
             return true;
         }
@@ -139,16 +166,19 @@ public class BrewersGuideScreen extends Screen {
 
         guiGraphics.drawString(font, title, left + 14, top + 8, PANEL_LIGHT, false);
         guiGraphics.drawString(font,
-                Component.literal("Carbonation, mixing, stability, and field notes."),
+                Component.translatable("createpop.brewers_guide.subtitle"),
                 left + 118, top + 8, 0xFFD7C089, false);
 
-        guiGraphics.drawString(font, Component.literal("Chapters"), listLeft, listTop - 12, INK, false);
-        guiGraphics.drawString(font,
-                Component.literal(selectedIndex + 1 + "/" + sections.size()),
-                listLeft + listWidth - font.width(selectedIndex + 1 + "/" + sections.size()), listTop - 12, MUTED, false);
+        guiGraphics.drawString(font, Component.translatable("createpop.brewers_guide.chapters"), listLeft, listTop - 12, INK, false);
+        Component progress = Component.translatable("createpop.brewers_guide.progress", selectedIndex + 1, sections.size());
+        guiGraphics.drawString(font, progress, listLeft + listWidth - font.width(progress), listTop - 12, MUTED, false);
 
         renderSectionList(guiGraphics, mouseX, mouseY);
-        renderSectionDetails(guiGraphics);
+        renderSectionDetails(guiGraphics, mouseX, mouseY);
+
+        if (hoveredLink != null) {
+            guiGraphics.renderComponentTooltip(font, hoveredLinkTooltip(), mouseX, mouseY);
+        }
 
         for (net.minecraft.client.gui.components.Renderable renderable : this.renderables) {
             renderable.render(guiGraphics, mouseX, mouseY, partialTick);
@@ -170,15 +200,17 @@ public class BrewersGuideScreen extends Screen {
             guiGraphics.fill(listLeft, rowTop + ENTRY_HEIGHT - 1, listLeft + listWidth, rowTop + ENTRY_HEIGHT, 0x332D2118);
 
             int titleColor = selected ? 0xFFFDF5D3 : section.accentColor();
-            drawReadableString(guiGraphics, font.plainSubstrByWidth(section.title(), listWidth - 8), listLeft + 5, rowTop + 3, titleColor);
+            drawReadableString(guiGraphics, font.plainSubstrByWidth(section.title().getString(), listWidth - 8), listLeft + 5, rowTop + 3, titleColor);
             guiGraphics.drawString(font,
-                    font.plainSubstrByWidth(section.summary(), listWidth - 8),
+                    font.plainSubstrByWidth(section.summary().getString(), listWidth - 8),
                     listLeft + 5, rowTop + 13, MUTED, false);
         }
     }
 
-    private void renderSectionDetails(GuiGraphics guiGraphics) {
+    private void renderSectionDetails(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         Section section = selectedSection();
+        hoveredLink = null;
+        activeLinks.clear();
         if (section == null) {
             return;
         }
@@ -186,18 +218,78 @@ public class BrewersGuideScreen extends Screen {
         guiGraphics.enableScissor(detailsPaneLeft + 3, detailsTop, detailsPaneLeft + detailsPaneWidth - 3, detailsContentBottom);
 
         int y = detailsTop - detailsScroll;
-        y = drawWrappedShadowed(guiGraphics, Component.literal(section.title()), detailsLeft, y, detailsWidth, section.accentColor());
-        y = drawWrapped(guiGraphics, Component.literal(section.summary()), detailsLeft, y + 2, detailsWidth, 0xFFB97638);
+        y = drawWrappedShadowed(guiGraphics, section.title(), detailsLeft, y, detailsWidth, section.accentColor());
+        y = drawWrappedAmber(guiGraphics, section.summary(), detailsLeft, y + 2, detailsWidth);
         y += 4;
         guiGraphics.fill(detailsLeft, y, detailsLeft + detailsWidth, y + 1, 0x553D2A1C);
         y += 8;
 
-        for (GuideLine line : section.lines()) {
-            y = drawWrapped(guiGraphics, line.text(), detailsLeft, y, detailsWidth, line.color());
-            y += 4;
+        for (GuideParagraph paragraph : section.paragraphs()) {
+            y = drawParagraph(guiGraphics, paragraph, detailsLeft, y, detailsWidth, mouseX, mouseY);
         }
 
         guiGraphics.disableScissor();
+        drawDetailsScrollbar(guiGraphics, maxDetailsScroll(section));
+    }
+
+    private int drawParagraph(GuiGraphics guiGraphics, GuideParagraph paragraph, int x, int y, int maxWidth, int mouseX, int mouseY) {
+        int cursorX = x;
+        int cursorY = y;
+        for (GuideSegment segment : paragraph.segments()) {
+            if (segment.linkAction() != LinkAction.NONE && !segment.item().isEmpty() && jeiLinksAvailable) {
+                String remaining = segment.text().getString();
+                while (!remaining.isEmpty()) {
+                    if (cursorX > x && cursorX >= x + maxWidth) {
+                        cursorX = x;
+                        cursorY += 10;
+                    }
+                    int availableWidth = Math.max(10, (x + maxWidth) - cursorX);
+                    String chunk = nextLinkChunk(remaining, availableWidth);
+                    int chunkWidth = font.width(chunk);
+                    boolean hovered = isPointInside(mouseX, mouseY, cursorX, cursorY, cursorX + chunkWidth, cursorY + 10);
+                    int color = hovered ? LINK_HOVER : LINK;
+                    guiGraphics.drawString(font, chunk, cursorX, cursorY, color, false);
+                    guiGraphics.fill(cursorX, cursorY + 9, cursorX + chunkWidth, cursorY + 10, color);
+
+                    LinkRegion region = new LinkRegion(cursorX, cursorY, cursorX + chunkWidth, cursorY + 10, segment.item(), segment.linkAction());
+                    activeLinks.add(region);
+                    if (hovered) {
+                        hoveredLink = region;
+                    }
+
+                    remaining = trimLeadingSpace(remaining.substring(chunk.length()));
+                    if (!remaining.isEmpty()) {
+                        cursorX = x;
+                        cursorY += 10;
+                    } else {
+                        cursorX += chunkWidth;
+                    }
+                }
+                continue;
+            }
+
+            for (String token : tokenize(segment.text().getString())) {
+                if (token.isEmpty()) {
+                    continue;
+                }
+                if (" ".equals(token) && cursorX == x) {
+                    continue;
+                }
+                int tokenWidth = font.width(token);
+                if (cursorX > x && cursorX + tokenWidth > x + maxWidth) {
+                    cursorX = x;
+                    cursorY += 10;
+                    if (" ".equals(token)) {
+                        continue;
+                    }
+                }
+                if (!" ".equals(token)) {
+                    guiGraphics.drawString(font, token, cursorX, cursorY, segment.color(), false);
+                }
+                cursorX += tokenWidth;
+            }
+        }
+        return cursorY + 10 + paragraph.gapAfter();
     }
 
     private boolean clickSection(double mouseX, double mouseY) {
@@ -214,6 +306,25 @@ public class BrewersGuideScreen extends Screen {
         detailsScroll = 0;
         init();
         return true;
+    }
+
+    private boolean clickGuideLink(double mouseX, double mouseY) {
+        if (!jeiLinksAvailable) {
+            return false;
+        }
+        for (LinkRegion region : activeLinks) {
+            if (isPointInside(mouseX, mouseY, region.left(), region.top(), region.right(), region.bottom())) {
+                if (minecraft != null) {
+                    ItemStack linkedItem = region.item().copy();
+                    LinkAction linkAction = region.linkAction();
+                    rememberViewState();
+                    super.onClose();
+                    minecraft.execute(() -> openLinkedItemInJei(linkedItem, linkAction));
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void scrollListBy(int delta) {
@@ -255,24 +366,65 @@ public class BrewersGuideScreen extends Screen {
     }
 
     private int measureSectionHeight(Section section) {
-        int height = measureWrappedHeight(Component.literal(section.title()), detailsWidth);
-        height += measureWrappedHeight(Component.literal(section.summary()), detailsWidth);
+        int height = measureWrappedHeight(section.title(), detailsWidth);
+        height += measureWrappedHeight(section.summary(), detailsWidth);
         height += 14;
-        for (GuideLine line : section.lines()) {
-            height += measureWrappedHeight(line.text(), detailsWidth);
-            height += 4;
+        for (GuideParagraph paragraph : section.paragraphs()) {
+            height += measureParagraphHeight(paragraph, detailsWidth);
         }
         return height;
+    }
+
+    private int measureParagraphHeight(GuideParagraph paragraph, int maxWidth) {
+        int lines = 1;
+        int cursorWidth = 0;
+        for (GuideSegment segment : paragraph.segments()) {
+            if (segment.linkAction() != LinkAction.NONE && !segment.item().isEmpty()) {
+                String remaining = segment.text().getString();
+                while (!remaining.isEmpty()) {
+                    int availableWidth = Math.max(10, maxWidth - cursorWidth);
+                    String chunk = nextLinkChunk(remaining, availableWidth);
+                    int chunkWidth = font.width(chunk);
+                    if (cursorWidth > 0 && cursorWidth + chunkWidth > maxWidth) {
+                        lines++;
+                        cursorWidth = 0;
+                        continue;
+                    }
+                    remaining = trimLeadingSpace(remaining.substring(chunk.length()));
+                    if (!remaining.isEmpty()) {
+                        lines++;
+                        cursorWidth = 0;
+                    } else {
+                        cursorWidth += chunkWidth;
+                    }
+                }
+                continue;
+            }
+
+            for (String token : tokenize(segment.text().getString())) {
+                if (token.isEmpty()) {
+                    continue;
+                }
+                int tokenWidth = font.width(token);
+                if (cursorWidth > 0 && cursorWidth + tokenWidth > maxWidth) {
+                    lines++;
+                    cursorWidth = " ".equals(token) ? 0 : tokenWidth;
+                } else if (!(" ".equals(token) && cursorWidth == 0)) {
+                    cursorWidth += tokenWidth;
+                }
+            }
+        }
+        return (lines * 10) + paragraph.gapAfter();
     }
 
     private int measureWrappedHeight(Component text, int maxWidth) {
         return font.split(text, maxWidth).size() * 10;
     }
 
-    private int drawWrapped(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color) {
+    private int drawWrappedAmber(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth) {
         List<FormattedCharSequence> lines = font.split(text, maxWidth);
         for (FormattedCharSequence line : lines) {
-            guiGraphics.drawString(font, line, x, y, color, false);
+            guiGraphics.drawString(font, line, x, y, 0xFFB97638, false);
             y += 10;
         }
         return y;
@@ -293,6 +445,22 @@ public class BrewersGuideScreen extends Screen {
         guiGraphics.drawString(font, text, x, y, color, false);
     }
 
+    private void drawDetailsScrollbar(GuiGraphics guiGraphics, int maxScroll) {
+        int trackLeft = detailsPaneLeft + detailsPaneWidth - 8;
+        int trackTop = detailsTop;
+        int trackBottom = detailsContentBottom;
+        guiGraphics.fill(trackLeft, trackTop, trackLeft + 4, trackBottom, 0x221A120A);
+        if (maxScroll <= 0) {
+            return;
+        }
+        int trackHeight = trackBottom - trackTop;
+        int thumbHeight = Math.max(18, (trackHeight * trackHeight) / (trackHeight + maxScroll));
+        int thumbTravel = Math.max(0, trackHeight - thumbHeight);
+        int thumbTop = trackTop + (thumbTravel * detailsScroll / maxScroll);
+        guiGraphics.fill(trackLeft, thumbTop, trackLeft + 4, thumbTop + thumbHeight, ACCENT);
+        guiGraphics.fill(trackLeft, thumbTop, trackLeft + 4, thumbTop + 1, 0x55FFFFFF);
+    }
+
     private void drawFrame(GuiGraphics guiGraphics, int x, int y, int width, int height, int border, int fill) {
         guiGraphics.fill(x, y, x + width, y + height, border);
         guiGraphics.fill(x + 2, y + 2, x + width - 2, y + height - 2, fill);
@@ -309,77 +477,219 @@ public class BrewersGuideScreen extends Screen {
 
     private List<Section> createSections() {
         String portion = DynamicSodaMixing.DRINK_AMOUNT + " mB";
+        ItemStack notebook = new ItemStack(ModItems.BREWERS_NOTEBOOK.get());
+        ItemStack diamond = new ItemStack(Items.DIAMOND);
+        ItemStack potion = new ItemStack(Items.POTION);
+        ItemStack dye = new ItemStack(Items.RED_DYE);
+        ItemStack acacia = new ItemStack(Items.STRIPPED_ACACIA_LOG);
+        ItemStack magmaCream = new ItemStack(Items.MAGMA_CREAM);
+        ItemStack amethyst = new ItemStack(Items.AMETHYST_SHARD);
         return List.of(
                 new Section(
-                        "Overview",
-                        "What this guide is for",
+                        tr("createpop.brewers_guide.section.overview.title"),
+                        tr("createpop.brewers_guide.section.overview.summary"),
                         0xFFC98B49,
                         List.of(
-                                line("Create Pop revolves around turning plain water into carbonated water, then combining that base with potions, sodas, dyes, or stabilisers in a Create mixer.", INK),
-                                line("Every proper mix works in drink-sized portions of " + portion + ", so aim to feed the basin with at least that much of each fluid input.", INK),
-                                line("Use this guide as a field manual: the notebook is where you keep your personal discoveries and tasting notes once you start experimenting.", MUTED)
+                                paragraph(text("createpop.brewers_guide.section.overview.line1", INK)),
+                                paragraph(text("createpop.brewers_guide.section.overview.line2", INK, portion)),
+                                paragraph(
+                                        text("createpop.brewers_guide.section.overview.line3.prefix", MUTED),
+                                        itemRecipeLink(notebook, notebook.getHoverName()),
+                                        text("createpop.brewers_guide.section.overview.line3.suffix", MUTED)
+                                )
                         )
                 ),
                 new Section(
-                        "Carbonation",
-                        "Start with carbonated water",
+                        tr("createpop.brewers_guide.section.carb.title"),
+                        tr("createpop.brewers_guide.section.carb.summary"),
                         0xFF63B8D5,
                         List.of(
-                                line("1. Put water into a Create mixer basin.", INK),
-                                line("2. Add a diamond to carbonate it.", INK),
-                                line("3. Bottle, bucket, or pipe the result if you want to transport it before the next mix.", INK),
-                                line("Carbonated water is the backbone for every first-generation soda. If a recipe feels like it should work but refuses to mix, check that you are starting from carbonated water instead of plain water.", MUTED)
+                                paragraph(text("createpop.brewers_guide.section.carb.line1", INK)),
+                                paragraph(
+                                        text("createpop.brewers_guide.section.carb.line2.prefix", INK),
+                                        itemUseLink(diamond, diamond.getHoverName()),
+                                        text("createpop.brewers_guide.section.carb.line2.suffix", INK)
+                                ),
+                                paragraph(text("createpop.brewers_guide.section.carb.line3", INK)),
+                                paragraph(text("createpop.brewers_guide.section.carb.line4", MUTED))
                         )
                 ),
                 new Section(
-                        "First Soda",
-                        "Turning potions into soda bases",
+                        tr("createpop.brewers_guide.section.first_soda.title"),
+                        tr("createpop.brewers_guide.section.first_soda.summary"),
                         0xFF8BBF5A,
                         List.of(
-                                line("Mix carbonated water with a beneficial tier-1 potion to create a soda base. The potion can be supplied as a fluid or as an item, depending on how you are processing it.", INK),
-                                line("The resulting soda inherits reduced, drinkable effect timings and gains a color that helps identify it at a glance.", INK),
-                                line("Once you have a base soda, you can remix it with other sodas, tint it with dyes, or stabilise it if the recipe starts getting unruly.", MUTED)
+                                paragraph(
+                                        text("createpop.brewers_guide.section.first_soda.line1.prefix", INK),
+                                        itemUseLink(potion, potion.getHoverName()),
+                                        text("createpop.brewers_guide.section.first_soda.line1.suffix", INK)
+                                ),
+                                paragraph(text("createpop.brewers_guide.section.first_soda.line2", INK)),
+                                paragraph(
+                                        text("createpop.brewers_guide.section.first_soda.line3.prefix", MUTED),
+                                        itemUseLink(dye, tr("createpop.brewers_guide.links.dyes")),
+                                        text("createpop.brewers_guide.section.first_soda.line3.suffix", MUTED)
+                                )
                         )
                 ),
                 new Section(
-                        "Mixing Rules",
-                        "Combining flavors and effects",
+                        tr("createpop.brewers_guide.section.rules.title"),
+                        tr("createpop.brewers_guide.section.rules.summary"),
                         0xFFB06FE0,
                         List.of(
-                                line("Mixing two different sodas combines their effects into a new drink. Matching effects tend to stack duration, while wildly uneven amounts lead to more dilution and shorter results.", INK),
-                                line("Dyes recolor an existing soda without changing its core effects, which is useful for theming batches or marking stronger blends.", INK),
-                                line("Try to mix deliberately rather than randomly: once two inputs are the same exact soda, the mixer intentionally avoids wasting them on a pointless same-for-same combine.", MUTED)
+                                paragraph(text("createpop.brewers_guide.section.rules.line1", INK)),
+                                paragraph(
+                                        text("createpop.brewers_guide.section.rules.line2.prefix", INK),
+                                        itemUseLink(dye, tr("createpop.brewers_guide.links.dyes")),
+                                        text("createpop.brewers_guide.section.rules.line2.suffix", INK)
+                                ),
+                                paragraph(text("createpop.brewers_guide.section.rules.line3", MUTED))
                         )
                 ),
                 new Section(
-                        "Instability",
-                        "Why risky blends bite back",
+                        tr("createpop.brewers_guide.section.instability.title"),
+                        tr("createpop.brewers_guide.section.instability.summary"),
                         0xFFD07054,
                         List.of(
-                                line("Every remix adds instability. The more complicated the drink becomes, the more likely it is to pick up drawbacks or otherwise drift away from the clean result you expected.", INK),
-                                line("Use stripped acacia logs in a heated mixer to shave off about " + percent(CreatePopConfig.acaciaLogInstabilityReduction()) + " instability, magma cream in a heated mixer for about " + percent(CreatePopConfig.magmaCreamInstabilityReduction()) + ", or an amethyst shard in a superheated mixer for about " + percent(CreatePopConfig.amethystShardInstabilityReduction()) + ".", INK),
-                                line("A little instability can be manageable, but if you are chasing polished recipes, stabilise between major remix steps instead of waiting until the very end.", MUTED)
+                                paragraph(text("createpop.brewers_guide.section.instability.line1", INK)),
+                                paragraph(
+                                        text("createpop.brewers_guide.section.instability.line2.prefix", INK),
+                                        itemUseLink(acacia, acacia.getHoverName()),
+                                        text("createpop.brewers_guide.section.instability.line2.middle1", INK, percent(CreatePopConfig.acaciaLogInstabilityReduction())),
+                                        itemUseLink(magmaCream, magmaCream.getHoverName()),
+                                        text("createpop.brewers_guide.section.instability.line2.middle2", INK, percent(CreatePopConfig.magmaCreamInstabilityReduction())),
+                                        itemUseLink(amethyst, amethyst.getHoverName()),
+                                        text("createpop.brewers_guide.section.instability.line2.suffix", INK, percent(CreatePopConfig.amethystShardInstabilityReduction()))
+                                ),
+                                paragraph(text("createpop.brewers_guide.section.instability.line3", MUTED))
                         )
                 ),
                 new Section(
-                        "Discovery Loop",
-                        "Learn, record, refine",
+                        tr("createpop.brewers_guide.section.discovery.title"),
+                        tr("createpop.brewers_guide.section.discovery.summary"),
                         0xFFE0A84F,
                         List.of(
-                                line("The brewer's notebook is your long-term memory. Save learned recipes into it, reopen them later, and write down what made a batch good, bad, or worth revisiting.", INK),
-                                line("When you discover something new, name it clearly and note what the drink felt like in practice: effect mix, instability, taste theme, and whether it is worth mass production.", INK),
-                                line("The best soda lab is iterative: discover a base, record it, refine it, and only then commit it to your regular production line.", MUTED)
+                                paragraph(
+                                        text("createpop.brewers_guide.section.discovery.line1.prefix", INK),
+                                        itemRecipeLink(notebook, notebook.getHoverName()),
+                                        text("createpop.brewers_guide.section.discovery.line1.suffix", INK)
+                                ),
+                                paragraph(text("createpop.brewers_guide.section.discovery.line2", INK)),
+                                paragraph(text("createpop.brewers_guide.section.discovery.line3", MUTED))
                         )
                 )
         );
     }
 
-    private GuideLine line(String text, int color) {
-        return new GuideLine(Component.literal(text), color);
+    private GuideParagraph paragraph(GuideSegment... segments) {
+        return new GuideParagraph(List.of(segments), 4);
+    }
+
+    private GuideSegment text(String key, int color, Object... args) {
+        return new GuideSegment(Component.translatable(key, args), color, ItemStack.EMPTY, LinkAction.NONE);
+    }
+
+    private GuideSegment itemRecipeLink(ItemStack stack, Component label) {
+        return new GuideSegment(label.copy(), LINK, stack.copy(), LinkAction.RECIPES);
+    }
+
+    private GuideSegment itemUseLink(ItemStack stack, Component label) {
+        return new GuideSegment(label.copy(), LINK, stack.copy(), LinkAction.USES);
+    }
+
+    private Component tr(String key, Object... args) {
+        return Component.translatable(key, args);
     }
 
     private String percent(double value) {
         return String.format(Locale.ROOT, "%.0f%%", value * 100.0D);
+    }
+
+    private List<String> tokenize(String text) {
+        List<String> tokens = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == ' ') {
+                if (!current.isEmpty()) {
+                    tokens.add(current.toString());
+                    current.setLength(0);
+                }
+                tokens.add(" ");
+            } else {
+                current.append(c);
+            }
+        }
+        if (!current.isEmpty()) {
+            tokens.add(current.toString());
+        }
+        return tokens;
+    }
+
+    private void rememberViewState() {
+        rememberedSelectedIndex = selectedIndex;
+        rememberedListScroll = listScroll;
+        rememberedDetailsScroll = detailsScroll;
+    }
+
+    private List<Component> hoveredLinkTooltip() {
+        if (hoveredLink == null) {
+            return List.of();
+        }
+        MutableComponent hint = Component.translatable(hoveredLink.linkAction().tooltipKey()).copy().withColor(MUTED);
+        return List.of(hoveredLink.item().getHoverName(), hint);
+    }
+
+    private boolean queryJeiLinksAvailable() {
+        try {
+            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
+            Object result = pluginClass.getMethod("isRuntimeAvailable").invoke(null);
+            return Boolean.TRUE.equals(result);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private void openLinkedItemInJei(ItemStack stack, LinkAction action) {
+        try {
+            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
+            String methodName = action == LinkAction.RECIPES ? "showItemRecipes" : "showItemUses";
+            pluginClass.getMethod(methodName, ItemStack.class).invoke(null, stack);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private String nextLinkChunk(String text, int maxWidth) {
+        if (!text.contains(" ")) {
+            return font.plainSubstrByWidth(text, maxWidth);
+        }
+        String[] words = text.split(" ");
+        StringBuilder builder = new StringBuilder();
+        for (String word : words) {
+            String candidate = builder.isEmpty() ? word : builder + " " + word;
+            if (builder.isEmpty() || font.width(candidate) <= maxWidth) {
+                builder.setLength(0);
+                builder.append(candidate);
+            } else {
+                break;
+            }
+        }
+        if (builder.isEmpty()) {
+            return font.plainSubstrByWidth(text, maxWidth);
+        }
+        return builder.toString();
+    }
+
+    private String trimLeadingSpace(String text) {
+        int index = 0;
+        while (index < text.length() && text.charAt(index) == ' ') {
+            index++;
+        }
+        return text.substring(index);
+    }
+
+    private boolean isPointInside(double mouseX, double mouseY, int left, int top, int right, int bottom) {
+        return mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom;
     }
 
     @Override
@@ -387,10 +697,31 @@ public class BrewersGuideScreen extends Screen {
         return false;
     }
 
-    private record GuideLine(Component text, int color) {
+    private record GuideSegment(Component text, int color, ItemStack item, LinkAction linkAction) {
     }
 
-    private record Section(String title, String summary, int accentColor, List<GuideLine> lines) {
+    private record GuideParagraph(List<GuideSegment> segments, int gapAfter) {
+    }
+
+    private record LinkRegion(int left, int top, int right, int bottom, ItemStack item, LinkAction linkAction) {
+    }
+
+    private record Section(Component title, Component summary, int accentColor, List<GuideParagraph> paragraphs) {
+    }
+
+    private enum LinkAction {
+        NONE(""),
+        RECIPES("createpop.brewers_guide.link_hint.recipes"),
+        USES("createpop.brewers_guide.link_hint.uses");
+
+        private final String tooltipKey;
+
+        LinkAction(String tooltipKey) {
+            this.tooltipKey = tooltipKey;
+        }
+
+        public String tooltipKey() {
+            return tooltipKey;
+        }
     }
 }
-
