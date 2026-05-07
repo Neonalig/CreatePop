@@ -227,7 +227,7 @@ public final class DynamicSodaMixing {
             return Optional.empty();
         }
 
-        List<MobEffectInstance> tierOneEffects = tierOneBeneficialEffects(potion, false);
+        List<MobEffectInstance> tierOneEffects = tierOneBeneficialEffects(potion);
 
         if (tierOneEffects.isEmpty()) {
             return Optional.empty();
@@ -250,8 +250,8 @@ public final class DynamicSodaMixing {
             return Optional.empty();
         }
 
-        // Create's potion fluid stores effect durations at a different scale than item potions.
-        List<MobEffectInstance> tierOneEffects = tierOneBeneficialEffects(potion, true);
+        // Create potion fluid durations are already in ticks — no normalization needed.
+        List<MobEffectInstance> tierOneEffects = tierOneBeneficialEffects(potion);
 
         if (tierOneEffects.isEmpty()) {
             return Optional.empty();
@@ -260,21 +260,15 @@ public final class DynamicSodaMixing {
         return Optional.of(new SodaInput(stack, SodaData.ofPotion(tierOneEffects, potion.getColor()), false, false, true));
     }
 
-    private static List<MobEffectInstance> tierOneBeneficialEffects(PotionContents potion, boolean fromFluid) {
+    private static List<MobEffectInstance> tierOneBeneficialEffects(PotionContents potion) {
         List<MobEffectInstance> tierOneEffects = new ArrayList<>();
         for (MobEffectInstance effect : potion.getAllEffects()) {
             if (effect.getAmplifier() != 0 || effect.getEffect().value().getCategory() != MobEffectCategory.BENEFICIAL) {
                 continue;
             }
-
-            int duration = effect.getDuration();
-            if (fromFluid) {
-                duration = Math.max(1, duration / 20);
-            }
-
             tierOneEffects.add(new MobEffectInstance(
                     effect.getEffect(),
-                    duration,
+                    effect.getDuration(),
                     effect.getAmplifier(),
                     effect.isAmbient(),
                     effect.isVisible(),
