@@ -1,12 +1,15 @@
-﻿name: Build Dummy
+﻿name: CI Build (Dummy)
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
+    paths-ignore:
+      - 'CreatePop/**'
+      - '.github/workflows/build.yml'
 
 jobs:
-  noop:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Dummy workflow placeholder for branch protection compatibility."
-
+    - name: Bypass CI
+      run: echo "No code changes detected. Bypassing build."
