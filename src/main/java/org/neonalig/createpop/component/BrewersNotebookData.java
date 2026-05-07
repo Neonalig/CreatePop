@@ -35,15 +35,27 @@ public record BrewersNotebookData(List<Entry> entries) {
     }
 
     public BrewersNotebookData withEntry(SodaData data) {
-        Map<String, SodaData> merged = new LinkedHashMap<>(asMap());
-        merged.putIfAbsent(keyFor(data), data);
-        return fromMap(merged);
+        return withEntry(data, List.of());
+    }
+
+    public BrewersNotebookData withEntry(SodaData data, List<String> ingredients) {
+        String key = keyFor(data);
+        Map<String, Entry> merged = new LinkedHashMap<>(entryMap());
+        merged.putIfAbsent(key, new Entry(key, data, ingredients));
+        return fromEntryMap(merged);
     }
 
     public BrewersNotebookData merge(BrewersNotebookData other) {
-        Map<String, SodaData> merged = new LinkedHashMap<>(asMap());
-        merged.putAll(other.asMap());
-        return fromMap(merged);
+        Map<String, Entry> merged = new LinkedHashMap<>(entryMap());
+        for (Entry incoming : other.entries) {
+            merged.merge(incoming.key(), incoming, (current, next) -> {
+                if (current.ingredients().isEmpty() && !next.ingredients().isEmpty()) {
+                    return next;
+                }
+                return current;
+            });
+        }
+        return fromEntryMap(merged);
     }
 
     public Map<String, SodaData> asMap() {
@@ -54,11 +66,31 @@ public record BrewersNotebookData(List<Entry> entries) {
         return byKey;
     }
 
+    public Map<String, Entry> entryMap() {
+        Map<String, Entry> byKey = new LinkedHashMap<>();
+        for (Entry entry : entries) {
+            byKey.put(entry.key(), entry);
+        }
+        return byKey;
+    }
+
+    public boolean containsKey(String key) {
+        return entryMap().containsKey(key);
+    }
+
     public static BrewersNotebookData fromMap(Map<String, SodaData> byKey) {
         List<Entry> merged = new ArrayList<>();
         byKey.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> merged.add(new Entry(entry.getKey(), entry.getValue())));
+                .forEach(entry -> merged.add(new Entry(entry.getKey(), entry.getValue(), List.of())));
+        return new BrewersNotebookData(merged);
+    }
+
+    public static BrewersNotebookData fromEntryMap(Map<String, Entry> byKey) {
+        List<Entry> merged = new ArrayList<>();
+        byKey.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> merged.add(entry.getValue()));
         return new BrewersNotebookData(merged);
     }
 
@@ -83,21 +115,29 @@ public record BrewersNotebookData(List<Entry> entries) {
         if (input.isEmpty()) {
             return List.of();
         }
-        Map<String, SodaData> merged = new LinkedHashMap<>();
+        Map<String, Entry> merged = new LinkedHashMap<>();
         for (Entry entry : input) {
-            merged.put(entry.key(), entry.data());
+            merged.merge(entry.key(), entry, (current, next) -> {
+                if (current.ingredients().isEmpty() && !next.ingredients().isEmpty()) {
+                    return next;
+                }
+                return current;
+            });
         }
         List<Entry> normalized = new ArrayList<>();
-        merged.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> normalized.add(new Entry(entry.getKey(), entry.getValue())));
+        merged.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> normalized.add(entry.getValue()));
         return List.copyOf(normalized);
     }
 
-    public record Entry(String key, SodaData data) {
+    public record Entry(String key, SodaData data, List<String> ingredients) {
+        public Entry {
+            ingredients = List.copyOf(ingredients);
+        }
+
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("key").forGetter(Entry::key),
-                SodaData.CODEC.fieldOf("data").forGetter(Entry::data)
+                SodaData.CODEC.fieldOf("data").forGetter(Entry::data),
+                Codec.STRING.listOf().optionalFieldOf("ingredients", List.of()).forGetter(Entry::ingredients)
         ).apply(instance, Entry::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
@@ -105,6 +145,8 @@ public record BrewersNotebookData(List<Entry> entries) {
                 Entry::key,
                 SodaData.STREAM_CODEC,
                 Entry::data,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()),
+                Entry::ingredients,
                 Entry::new
         );
     }

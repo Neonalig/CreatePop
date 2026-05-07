@@ -47,7 +47,9 @@ public final class ModCommonEvents {
 
         int learned = BrewingDiscoveryManager.learnFromBlock(player, player.level(), event.getPos(), event.getFace());
         if (learned > 0) {
-            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.learned", learned), true);
+            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_added", learned), true);
+        } else {
+            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_none"), true);
         }
     }
 

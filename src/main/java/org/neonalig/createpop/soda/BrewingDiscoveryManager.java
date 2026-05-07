@@ -4,6 +4,7 @@ import com.mojang.serialization.DataResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
@@ -21,6 +22,7 @@ import org.neonalig.createpop.registry.ModFluids;
 
 import javax.annotation.Nullable;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +31,7 @@ public final class BrewingDiscoveryManager {
     private static final String NOTEBOOK_RECIPES_TAG = "createpop_notebook_recipes";
     private static final String ENTRY_KEY = "key";
     private static final String ENTRY_DATA = "data";
+    private static final String ENTRY_INGREDIENTS = "ingredients";
 
     private BrewingDiscoveryManager() {
     }
@@ -55,7 +58,11 @@ public final class BrewingDiscoveryManager {
 
     public static boolean learnFromStack(Player player, ItemStack stack) {
         if (stack.is(ModFluids.SODA_BOTTLE.get()) || stack.is(ModFluids.SODA_BUCKET.get())) {
-            return learn(player, SodaFluidStackHelper.getSodaData(stack));
+            return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of(
+                    "Carbonated Water",
+                    "Potion/Soda reactants",
+                    sourceLabel(stack)
+            ));
         }
         return false;
     }
@@ -64,7 +71,11 @@ public final class BrewingDiscoveryManager {
         if (!SodaFluidStackHelper.isSoda(stack) || stack.getAmount() <= 0) {
             return false;
         }
-        return learn(player, SodaFluidStackHelper.getSodaData(stack));
+        return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of(
+                "Carbonated Water",
+                "Potion/Soda reactants",
+                "Fluid vessel sample"
+        ));
     }
 
     public static int learnFromBlock(Player player, Level level, BlockPos pos, @Nullable Direction side) {
@@ -98,17 +109,25 @@ public final class BrewingDiscoveryManager {
     }
 
     public static boolean learn(Player player, SodaData data) {
+        return learn(player, data, List.of());
+    }
+
+    public static boolean learn(Player player, SodaData data, List<String> ingredients) {
         if (data.equals(SodaData.EMPTY)) {
             return false;
         }
 
         BrewersNotebookData known = playerData(player);
         String key = BrewersNotebookData.keyFor(data);
-        if (known.asMap().containsKey(key)) {
+        if (known.containsKey(key)) {
             return false;
         }
 
-        setPlayerData(player, known.withEntry(data));
+        List<String> normalizedIngredients = ingredients.isEmpty() ? List.of(
+                "Carbonated Water",
+                "Potion/Soda reactants"
+        ) : ingredients;
+        setPlayerData(player, known.withEntry(data, normalizedIngredients));
         return true;
     }
 
@@ -125,8 +144,12 @@ public final class BrewingDiscoveryManager {
         return merged.size() - before;
     }
 
-    public static void writePlayerRecipesToNotebook(Player player, ItemStack notebook) {
-        setNotebookData(notebook, playerData(player));
+    public static int writePlayerRecipesToNotebook(Player player, ItemStack notebook) {
+        BrewersNotebookData existing = notebookData(notebook);
+        BrewersNotebookData merged = existing.merge(playerData(player));
+        int added = merged.size() - existing.size();
+        setNotebookData(notebook, merged);
+        return added;
     }
 
     public static void mergeNotebookStacks(ItemStack output, ItemStack first, ItemStack second) {
@@ -153,7 +176,7 @@ public final class BrewingDiscoveryManager {
     }
 
     private static BrewersNotebookData readData(ListTag list) {
-        Map<String, SodaData> byKey = new LinkedHashMap<>();
+        Map<String, BrewersNotebookData.Entry> byKey = new LinkedHashMap<>();
         for (int i = 0; i < list.size(); i++) {
             CompoundTag entry = list.getCompound(i);
             String key = entry.getString(ENTRY_KEY);
@@ -161,9 +184,19 @@ public final class BrewingDiscoveryManager {
                 continue;
             }
             DataResult<SodaData> parsed = SodaData.CODEC.parse(NbtOps.INSTANCE, entry.getCompound(ENTRY_DATA));
-            parsed.result().ifPresent(data -> byKey.put(key, data));
+            List<String> ingredients = List.of();
+            if (entry.contains(ENTRY_INGREDIENTS, Tag.TAG_LIST)) {
+                ListTag ingredientList = entry.getList(ENTRY_INGREDIENTS, Tag.TAG_STRING);
+                java.util.ArrayList<String> loaded = new java.util.ArrayList<>();
+                for (int index = 0; index < ingredientList.size(); index++) {
+                    loaded.add(ingredientList.getString(index));
+                }
+                ingredients = List.copyOf(loaded);
+            }
+            List<String> finalIngredients = ingredients;
+            parsed.result().ifPresent(data -> byKey.put(key, new BrewersNotebookData.Entry(key, data, finalIngredients)));
         }
-        return BrewersNotebookData.fromMap(byKey);
+        return BrewersNotebookData.fromEntryMap(byKey);
     }
 
     private static void setPlayerData(Player player, BrewersNotebookData data) {
@@ -180,9 +213,18 @@ public final class BrewingDiscoveryManager {
                     entryTag.put(ENTRY_DATA, compound);
                 }
             });
+            ListTag ingredients = new ListTag();
+            for (String ingredient : entry.ingredients()) {
+                ingredients.add(net.minecraft.nbt.StringTag.valueOf(ingredient));
+            }
+            entryTag.put(ENTRY_INGREDIENTS, ingredients);
             list.add(entryTag);
         }
         return list;
+    }
+
+    private static String sourceLabel(ItemStack stack) {
+        return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
     }
 }
 

@@ -37,7 +37,11 @@ public class SodaBottleItem extends Item {
         if (!level.isClientSide) {
             SodaData data = SodaFluidStackHelper.getSodaData(stack);
             if (player != null) {
-                BrewingDiscoveryManager.learn(player, data);
+                BrewingDiscoveryManager.learn(player, data, java.util.List.of(
+                        "Carbonated Water",
+                        "Potion/Soda reactants",
+                        "Soda bottle sample"
+                ));
             }
             for (MobEffectInstance effect : data.effects()) {
                 livingEntity.addEffect(new MobEffectInstance(effect));

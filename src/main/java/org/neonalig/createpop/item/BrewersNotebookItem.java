@@ -17,6 +17,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.WrittenBookItem;
 import net.minecraft.world.item.component.WrittenBookContent;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.HitResult;
 import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.soda.BrewingDiscoveryManager;
 import org.neonalig.createpop.soda.SodaTextHelper;
@@ -34,8 +35,16 @@ public class BrewersNotebookItem extends WrittenBookItem {
         ItemStack stack = player.getItemInHand(hand);
 
         if (!level.isClientSide && player.isShiftKeyDown()) {
-            BrewingDiscoveryManager.writePlayerRecipesToNotebook(player, stack);
-            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.saved"), true);
+            if (isTargetingBlock(player)) {
+                return InteractionResultHolder.pass(stack);
+            }
+
+            int added = BrewingDiscoveryManager.writePlayerRecipesToNotebook(player, stack);
+            if (added > 0) {
+                player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.saved_added", added), true);
+            } else {
+                player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.saved_none"), true);
+            }
             return InteractionResultHolder.sidedSuccess(stack, false);
         }
 
@@ -113,6 +122,15 @@ public class BrewersNotebookItem extends WrittenBookItem {
                     }
                 }
 
+                recipe.append(Component.literal("\nIngredients:\n"));
+                if (entry.ingredients().isEmpty()) {
+                    recipe.append(Component.literal("Unknown (sampled soda)\n"));
+                } else {
+                    for (String ingredient : entry.ingredients()) {
+                        recipe.append(Component.literal("- " + ingredient + "\n"));
+                    }
+                }
+
                 pages.add(page(recipe));
             }
         }
@@ -130,6 +148,11 @@ public class BrewersNotebookItem extends WrittenBookItem {
 
     private static Filterable<Component> page(Component text) {
         return Filterable.passThrough(text);
+    }
+
+    private static boolean isTargetingBlock(Player player) {
+        HitResult hit = player.pick(5.0D, 0.0F, false);
+        return hit.getType() == HitResult.Type.BLOCK;
     }
 }
 
