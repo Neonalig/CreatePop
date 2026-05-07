@@ -8,6 +8,7 @@
 	"item.createpop.soda_bottle": "Bottle of Soda",
 	"fluid_type.createpop.carbonated_water": "Carbonated Water",
 	"fluid_type.createpop.soda": "Soda",
+	"createpop.jei.soda_with_instability": "Soda (Instability: %s)",
 	"createpop.soda.tooltip.no_effects": "No effects",
 	"createpop.soda.tooltip.instability": "Instability: %s",
 	"createpop.command.soda_debug.players_only": "This command can only be used by a player.",
@@ -24,5 +25,13 @@
 	"createpop.configuration.section.createpop.client.toml": "",
 	"createpop.configuration.section.createpop.client.toml.title": "Client",
 	"createpop.configuration.enableJeiPotionHints": "Enable Potion Hint Recipes (Requires JEI)",
-	"createpop.configuration.enableJeiPotionHints.tooltip": "Shows JEI mixer hint recipes for deterministic soda reactions once the world seed is known."
+	"createpop.configuration.enableJeiPotionHints.tooltip": "Shows JEI mixer hint recipes for deterministic soda reactions once the world seed is known.",
+	"createpop.configuration.section.createpop.common.toml": "",
+	"createpop.configuration.section.createpop.common.toml.title": "Soda Stability",
+	"createpop.configuration.acaciaLogInstabilityReduction": "Stripped Acacia Log Instability Reduction",
+	"createpop.configuration.acaciaLogInstabilityReduction.tooltip": "Fraction of instability removed when mixing soda with a stripped acacia log in a heated mixer (0.0–1.0).",
+	"createpop.configuration.magmaCreamInstabilityReduction": "Magma Cream Instability Reduction",
+	"createpop.configuration.magmaCreamInstabilityReduction.tooltip": "Fraction of instability removed when mixing soda with magma cream in a heated mixer (0.0–1.0).",
+	"createpop.configuration.amethystShardInstabilityReduction": "Amethyst Shard Instability Reduction",
+	"createpop.configuration.amethystShardInstabilityReduction.tooltip": "Fraction of instability removed when mixing soda with an amethyst shard in a superheated mixer (0.0–1.0)."
 }

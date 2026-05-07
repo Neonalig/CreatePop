@@ -17,6 +17,8 @@ import mezz.jei.api.registration.ISubtypeRegistration;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -36,6 +38,7 @@ import net.neoforged.neoforge.fluids.crafting.DataComponentFluidIngredient;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import com.simibubi.create.content.kinetics.mixer.MixingRecipe;
 import com.simibubi.create.content.processing.basin.BasinRecipe;
+import com.simibubi.create.content.processing.recipe.HeatCondition;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.CreatePop;
@@ -49,6 +52,7 @@ import org.neonalig.createpop.soda.SodaFluidStackHelper;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -91,7 +95,9 @@ public class CreatePopJeiPlugin implements IModPlugin {
         this.platformFluidHelper = helper;
         registration.registerSubtypeInterpreter(ModFluids.SODA_BOTTLE.get(), sodaItemSubtypeInterpreter());
         registration.registerSubtypeInterpreter(ModFluids.SODA_BUCKET.get(), sodaItemSubtypeInterpreter());
-        registration.registerSubtypeInterpreter(helper.getFluidIngredientType(), ModFluids.SODA.get(), sodaFluidSubtypeInterpreter());
+        // Intentionally do not subtype the soda fluid ingredient in JEI.
+        // This keeps hint recipes discoverable from the main soda focus instead of
+        // filtering by exact instability/effect component payload.
     }
 
     private static ISubtypeInterpreter<ItemStack> sodaItemSubtypeInterpreter() {
@@ -108,26 +114,6 @@ public class CreatePopJeiPlugin implements IModPlugin {
         };
     }
 
-    private static <T> ISubtypeInterpreter<T> sodaFluidSubtypeInterpreter() {
-        return new ISubtypeInterpreter<>() {
-            @Override
-            public Object getSubtypeData(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
-                if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
-                    return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
-                }
-                return "";
-            }
-
-            @Override
-            public String getLegacyStringSubtypeInfo(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
-                if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
-                    return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
-                }
-                return "";
-            }
-        };
-    }
-
     @Override
     public void registerIngredientAliases(IIngredientAliasRegistration registration) {
         if (platformFluidHelper != null) {
@@ -137,6 +123,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
+        registration.addRecipes(MIXING_TYPE, buildStabilisationHintRecipes());
         registration.addRecipes(MIXING_TYPE, buildPotionBaseRecipes(collectPotionBases()));
     }
 
@@ -144,6 +131,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
     public void registerExtraIngredients(IExtraIngredientRegistration registration) {
         if (platformFluidHelper != null) {
             addBaseSodaIngredients(registration, platformFluidHelper);
+            addStabilisationDemoIngredients(registration, platformFluidHelper);
         }
     }
 
@@ -430,6 +418,103 @@ public class CreatePopJeiPlugin implements IModPlugin {
         return new RecipeHolder<>(id, builder.build());
     }
 
+    private static RecipeHolder<BasinRecipe> recipeHolder(ResourceLocation id, FluidStack output, List<SizedFluidIngredient> fluids, HeatCondition heat, Ingredient... items) {
+        NonNullList<SizedFluidIngredient> ingredients = NonNullList.create();
+        ingredients.addAll(fluids);
+
+        StandardProcessingRecipe.Builder<MixingRecipe> builder = new StandardProcessingRecipe.Builder<>(MixingRecipe::new, id)
+                .withFluidIngredients(ingredients)
+                .withFluidOutputs(output)
+                .duration(100);
+
+        builder.requiresHeat(heat);
+
+        for (Ingredient item : items) {
+            builder.require(item);
+        }
+
+        return new RecipeHolder<>(id, builder.build());
+    }
+
+    private static List<RecipeHolder<BasinRecipe>> buildStabilisationHintRecipes() {
+        float demoInstability = 0.40f;
+        SodaData demoInput = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability);
+        FluidStack unstable = sodaForJei(demoInput);
+
+        List<RecipeHolder<BasinRecipe>> recipes = new ArrayList<>();
+
+        double acaciaReduction = CreatePopConfig.acaciaLogInstabilityReduction();
+        if (acaciaReduction > 0.0) {
+            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) acaciaReduction));
+            recipes.add(recipeHolder(
+                    ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/acacia_log"),
+                    sodaForJei(output),
+                    List.of(exactFluid(unstable)),
+                    HeatCondition.HEATED,
+                    Ingredient.of(Items.STRIPPED_ACACIA_LOG)
+            ));
+        }
+
+        double magmaReduction = CreatePopConfig.magmaCreamInstabilityReduction();
+        if (magmaReduction > 0.0) {
+            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) magmaReduction));
+            recipes.add(recipeHolder(
+                    ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/magma_cream"),
+                    sodaForJei(output),
+                    List.of(exactFluid(unstable)),
+                    HeatCondition.HEATED,
+                    Ingredient.of(Items.MAGMA_CREAM)
+            ));
+        }
+
+        double amethystReduction = CreatePopConfig.amethystShardInstabilityReduction();
+        if (amethystReduction > 0.0) {
+            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) amethystReduction));
+            recipes.add(recipeHolder(
+                    ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/amethyst_shard"),
+                    sodaForJei(output),
+                    List.of(exactFluid(unstable)),
+                    HeatCondition.SUPERHEATED,
+                    Ingredient.of(Items.AMETHYST_SHARD)
+            ));
+        }
+
+        return recipes;
+    }
+
+    private static <T> void addStabilisationDemoIngredients(IExtraIngredientRegistration registration,
+                                                             IPlatformFluidHelper<T> helper) {
+        float demoInstability = 0.40f;
+        Map<String, SodaData> unique = new LinkedHashMap<>();
+
+        SodaData inputDemo = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability);
+        addSodaVariant(unique, inputDemo);
+
+        for (double reduction : List.of(
+                CreatePopConfig.acaciaLogInstabilityReduction(),
+                CreatePopConfig.magmaCreamInstabilityReduction(),
+                CreatePopConfig.amethystShardInstabilityReduction()
+        )) {
+            if (reduction > 0.0) {
+                addSodaVariant(unique, new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) reduction)));
+            }
+        }
+
+        long listVolume = helper.bucketVolume();
+        List<T> extras = new ArrayList<>();
+        for (SodaData data : unique.values()) {
+            DataComponentPatch patch = DataComponentPatch.builder()
+                    .set(ModDataComponents.SODA_DATA.get(), data)
+                    .build();
+            extras.add(helper.create(
+                    BuiltInRegistries.FLUID.wrapAsHolder(ModFluids.SODA.get()),
+                    listVolume,
+                    patch
+            ));
+        }
+        registration.addExtraIngredients(helper.getFluidIngredientType(), extras);
+    }
+
     private static String sodaSubtypeKey(SodaData data) {
         StringBuilder key = new StringBuilder();
         key.append("c=").append(data.color())
@@ -460,10 +545,54 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
     private static FluidStack sodaForJei(SodaData data) {
         FluidStack soda = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, data);
+        Component effectsSummary = buildEffectSummary(data.effects());
+        Component instabilityText = Component.translatable(
+                "createpop.soda.tooltip.instability",
+                String.format(Locale.ROOT, "%.2f", data.instability())
+        ).withColor(0xFFB347); // amber/orange
+
+        MutableComponent customName = Component.translatable("fluid_type.createpop.soda")
+                .append(Component.literal(" ("))
+                .append(effectsSummary)
+                .append(Component.literal(", "))
+                .append(instabilityText)
+                .append(Component.literal(")"));
+        soda.set(DataComponents.CUSTOM_NAME, customName);
         // Attach potion-like tooltip data so JEI fluid tooltips expose effects for preview stacks.
         PotionContents tooltipContents = new PotionContents(Optional.empty(), Optional.of(data.color() & 0x00FFFFFF), SodaEffectReducer.copyEffects(data.effects()));
         soda.set(DataComponents.POTION_CONTENTS, tooltipContents);
         return soda;
+    }
+
+    private static Component buildEffectSummary(List<MobEffectInstance> effects) {
+        if (effects.isEmpty()) {
+            return Component.translatable("createpop.soda.tooltip.no_effects");
+        }
+
+        List<MobEffectInstance> sorted = SodaEffectReducer.copyEffects(effects);
+        sorted.sort(java.util.Comparator.comparing(SodaEffectReducer::effectId));
+
+        MutableComponent summary = Component.empty();
+        for (int i = 0; i < sorted.size(); i++) {
+            if (i > 0) {
+                summary.append(Component.literal(", "));
+            }
+            summary.append(formatEffectName(sorted.get(i)));
+        }
+        return summary;
+    }
+
+    private static Component formatEffectName(MobEffectInstance effect) {
+        MutableComponent effectText = Component.translatable(effect.getDescriptionId());
+        if (effect.getAmplifier() > 0) {
+            effectText = Component.translatable(
+                    "potion.withAmplifier",
+                    effectText,
+                    Component.translatable("potion.potency." + effect.getAmplifier())
+            );
+        }
+        MobEffectCategory category = effect.getEffect().value().getCategory();
+        return effectText.withStyle(category.getTooltipFormatting());
     }
 
     private static long resolveClientSeed() {

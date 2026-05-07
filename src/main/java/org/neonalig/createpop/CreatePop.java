@@ -48,6 +48,7 @@ public class CreatePop {
         ModDataComponents.register(modEventBus);
         ModFluids.register(modEventBus);
         modContainer.registerConfig(ModConfig.Type.CLIENT, CreatePopConfig.CLIENT_SPEC);
+        modContainer.registerConfig(ModConfig.Type.COMMON, CreatePopConfig.COMMON_SPEC);
         modEventBus.addListener(ModCapabilities::registerCapabilities);
         NeoForge.EVENT_BUS.addListener(SodaDebugCommand::register);
         if (FMLEnvironment.dist == Dist.CLIENT) {IConfigScreenFactory configScreenFactory = ConfigurationScreen::new;

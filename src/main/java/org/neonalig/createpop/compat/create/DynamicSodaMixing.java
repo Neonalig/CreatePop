@@ -2,6 +2,7 @@ package org.neonalig.createpop.compat.create;
 
 import com.simibubi.create.content.kinetics.mixer.MixingRecipe;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
+import com.simibubi.create.content.processing.recipe.HeatCondition;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
@@ -12,6 +13,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
@@ -21,6 +23,7 @@ import net.neoforged.neoforge.fluids.crafting.DataComponentFluidIngredient;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import net.neoforged.neoforge.items.IItemHandler;
 import org.neonalig.createpop.CreatePop;
+import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.component.SodaData;
 import org.neonalig.createpop.soda.SodaEffectReducer;
 import org.neonalig.createpop.soda.SodaFluidStackHelper;
@@ -56,6 +59,11 @@ public final class DynamicSodaMixing {
         Optional<MixingRecipe> base = findCarbonatedPotionRecipe(inputs, items);
         if (base.isPresent()) {
             return base;
+        }
+
+        Optional<MixingRecipe> stabilise = findStabilisationRecipe(inputs, items);
+        if (stabilise.isPresent()) {
+            return stabilise;
         }
 
         Optional<MixingRecipe> dye = findSodaDyeRecipe(inputs, findDyeInput(items));
@@ -160,6 +168,65 @@ public final class DynamicSodaMixing {
         }
 
         return builder.build();
+    }
+
+    private static MixingRecipe recipe(String name, FluidStack output, List<SizedFluidIngredient> fluids, HeatCondition heat, Ingredient... items) {
+        StandardProcessingRecipe.Builder<MixingRecipe> builder = new StandardProcessingRecipe.Builder<>(
+                MixingRecipe::new,
+                ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "dynamic/" + name)
+        ).withFluidIngredients(NonNullList.of(new SizedFluidIngredient(DataComponentFluidIngredient.of(true, output), output.getAmount()), fluids.toArray(SizedFluidIngredient[]::new)))
+                .withFluidOutputs(output)
+                .duration(100);
+
+        builder.requiresHeat(heat);
+
+        for (Ingredient item : items) {
+            builder.require(item);
+        }
+
+        return builder.build();
+    }
+
+    private static Optional<MixingRecipe> findStabilisationRecipe(List<SodaInput> inputs, List<ItemStack> items) {
+        for (SodaInput input : inputs) {
+            if (!input.soda() || input.data().instability() <= 0f) {
+                continue;
+            }
+
+            for (ItemStack item : items) {
+                if (item.is(Items.AMETHYST_SHARD)) {
+                    float reduction = (float) CreatePopConfig.amethystShardInstabilityReduction();
+                    if (reduction <= 0f) continue;
+                    SodaData stabilised = new SodaData(input.data().effects(), input.data().color(), input.data().instability() * (1f - reduction));
+                    FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, stabilised);
+                    return Optional.of(recipe("stabilise_full", output,
+                            List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
+                            HeatCondition.SUPERHEATED,
+                            Ingredient.of(Items.AMETHYST_SHARD)));
+                }
+                if (item.is(Items.MAGMA_CREAM)) {
+                    float reduction = (float) CreatePopConfig.magmaCreamInstabilityReduction();
+                    if (reduction <= 0f) continue;
+                    SodaData stabilised = new SodaData(input.data().effects(), input.data().color(), input.data().instability() * (1f - reduction));
+                    FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, stabilised);
+                    return Optional.of(recipe("stabilise_moderate", output,
+                            List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
+                            HeatCondition.HEATED,
+                            Ingredient.of(Items.MAGMA_CREAM)));
+                }
+                if (item.is(Items.STRIPPED_ACACIA_LOG)) {
+                    float reduction = (float) CreatePopConfig.acaciaLogInstabilityReduction();
+                    if (reduction <= 0f) continue;
+                    SodaData stabilised = new SodaData(input.data().effects(), input.data().color(), input.data().instability() * (1f - reduction));
+                    FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, stabilised);
+                    return Optional.of(recipe("stabilise_weak", output,
+                            List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
+                            HeatCondition.HEATED,
+                            Ingredient.of(Items.STRIPPED_ACACIA_LOG)));
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     private static SizedFluidIngredient exactFluid(FluidStack stack, int amount) {
