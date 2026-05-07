@@ -4,6 +4,7 @@ import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.helpers.IPlatformFluidHelper;
 import mezz.jei.api.ingredients.IIngredientType;
+import mezz.jei.api.ingredients.subtypes.IIngredientSubtypeInterpreter;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
@@ -83,6 +84,16 @@ public class CreatePopJeiPlugin implements IModPlugin {
     @Override
     public <T> void registerFluidSubtypes(ISubtypeRegistration registration, IPlatformFluidHelper<T> helper) {
         this.platformFluidHelper = helper;
+        registration.registerSubtypeInterpreter(ModFluids.SODA_BOTTLE.get(), (stack, context) ->
+                sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack)));
+        registration.registerSubtypeInterpreter(ModFluids.SODA_BUCKET.get(), (stack, context) ->
+                sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack)));
+        registration.registerSubtypeInterpreter(helper.getFluidIngredientType(), ModFluids.SODA.get(), (ingredient, context) -> {
+            if (!(ingredient instanceof FluidStack stack) || stack.isEmpty()) {
+                return IIngredientSubtypeInterpreter.NONE;
+            }
+            return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+        });
     }
 
     @Override
@@ -278,6 +289,20 @@ public class CreatePopJeiPlugin implements IModPlugin {
         }
 
         return new RecipeHolder<>(id, builder.build());
+    }
+
+    private static String sodaSubtypeKey(SodaData data) {
+        StringBuilder key = new StringBuilder();
+        key.append("c=").append(data.color())
+                .append(";i=").append(data.instability())
+                .append(";e=");
+        for (MobEffectInstance effect : SodaEffectReducer.copyEffects(data.effects())) {
+            key.append(SodaEffectReducer.effectId(effect))
+                    .append('@').append(effect.getAmplifier())
+                    .append('@').append(effect.getDuration())
+                    .append('|');
+        }
+        return key.toString();
     }
 
     private static SizedFluidIngredient exactFluid(FluidStack stack) {
