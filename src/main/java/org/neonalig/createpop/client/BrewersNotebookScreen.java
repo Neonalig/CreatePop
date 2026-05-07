@@ -1,6 +1,7 @@
 package org.neonalig.createpop.client;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -577,8 +578,7 @@ public class BrewersNotebookScreen extends Screen {
             guiGraphics.fill(listLeft, rowTop + ENTRY_HEIGHT - 1, listLeft + listWidth, rowTop + ENTRY_HEIGHT, 0x332D2118);
 
             int textColor = selected ? 0xFFFDF5D3 : entry.data().rgbColor();
-            String name = font.plainSubstrByWidth(entry.name(), listWidth - 8);
-            drawReadableString(guiGraphics, name, listLeft + 5, rowTop + 3, textColor);
+            drawMarqueeReadableString(guiGraphics, entry.name(), listLeft + 5, rowTop + 3, listWidth - 8, textColor);
             guiGraphics.drawString(font,
                     Component.translatable("createpop.brewers_notebook.effects_count", entry.data().effects().size()),
                     listLeft + 5, rowTop + 12, MUTED, false);
@@ -758,6 +758,50 @@ public class BrewersNotebookScreen extends Screen {
     private void drawReadableString(GuiGraphics guiGraphics, String text, int x, int y, int color) {
         guiGraphics.drawString(font, text, x + 1, y + 1, SOFT_SHADOW, false);
         guiGraphics.drawString(font, text, x, y, color, false);
+    }
+
+    private void drawMarqueeReadableString(GuiGraphics guiGraphics, String text, int x, int y, int maxWidth, int color) {
+        int textWidth = font.width(text);
+        if (textWidth <= maxWidth) {
+            drawReadableString(guiGraphics, text, x, y, color);
+            return;
+        }
+
+        int gap = 12;
+        int offset = marqueeOffset(textWidth, maxWidth, gap);
+        guiGraphics.enableScissor(toScreenX(x), toScreenY(y), toScreenX(x + maxWidth), toScreenY(y + 10));
+        drawReadableString(guiGraphics, text, x - offset, y, color);
+        drawReadableString(guiGraphics, text, x + textWidth + gap - offset, y, color);
+        guiGraphics.disableScissor();
+    }
+
+    private int marqueeOffset(int textWidth, int maxWidth, int gap) {
+        int travel = textWidth - maxWidth;
+        if (travel <= 0) {
+            return 0;
+        }
+        int pause = 900;
+        int pixelsPerSecond = 24;
+        int loop = travel + gap;
+        long travelTime = Math.round((loop * 1000.0F) / pixelsPerSecond);
+        long cycleTime = (pause * 3L) + (travelTime * 2L);
+        long phase = Util.getMillis() % cycleTime;
+        if (phase < pause) {
+            return 0;
+        }
+        phase -= pause;
+        if (phase < travelTime) {
+            return Math.min(loop, (int) Math.round((phase / (double) travelTime) * loop));
+        }
+        phase -= travelTime;
+        if (phase < pause) {
+            return loop;
+        }
+        phase -= pause;
+        if (phase < travelTime) {
+            return Math.max(0, loop - (int) Math.round((phase / (double) travelTime) * loop));
+        }
+        return 0;
     }
 
     private void drawDetailsScrollbar(GuiGraphics guiGraphics, int maxScroll) {
