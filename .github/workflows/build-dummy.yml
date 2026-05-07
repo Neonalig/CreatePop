@@ -4,7 +4,13 @@ on:
   pull_request:
     branches: [ "main" ]
     paths-ignore:
-      - 'CreatePop/**'
+      - 'src/**'
+      - 'gradle/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'gradlew'
+      - 'gradlew.bat'
       - '.github/workflows/build.yml'
 
 jobs:

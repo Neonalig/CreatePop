@@ -28,11 +28,9 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
 
     - name: Make gradlew executable
-      working-directory: ./CreatePop
       run: chmod +x ./gradlew
 
     - name: Build Mod
-      working-directory: ./CreatePop
       run: ./gradlew build
 
     - name: Generate Changelog
@@ -53,7 +51,7 @@ jobs:
         # curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
 
         # Grabs the compiled jar, ignoring dev/sources jars
-        files: CreatePop/build/libs/!(*-dev|-sources).jar
+        files: build/libs/!(*-dev|-sources).jar
 
         name: "Create: Pop ${{ github.ref_name }}"
         version: ${{ github.ref_name }}
