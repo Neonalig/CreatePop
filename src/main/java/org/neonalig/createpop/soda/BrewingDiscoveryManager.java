@@ -43,6 +43,7 @@ public final class BrewingDiscoveryManager {
     private static final String ENTRY_DATA = "data";
     private static final String ENTRY_NAME = "name";
     private static final String ENTRY_INGREDIENTS = "ingredients";
+    private static final String ENTRY_NOTE = "note";
 
     private BrewingDiscoveryManager() {
     }
@@ -291,10 +292,10 @@ public final class BrewingDiscoveryManager {
                 }
                 ingredients = List.copyOf(loaded);
             }
-            String name = entry.contains(ENTRY_NAME, Tag.TAG_STRING) ? entry.getString(ENTRY_NAME) : "Unnamed Soda";
-            List<String> finalIngredients = ingredients;
-            String finalName = name;
-            parsed.result().ifPresent(data -> byKey.put(key, new BrewersNotebookData.Entry(key, data, finalName, finalIngredients)));
+            final String finalName = entry.contains(ENTRY_NAME, Tag.TAG_STRING) ? entry.getString(ENTRY_NAME) : "Unnamed Soda";
+            final String finalNote = entry.contains(ENTRY_NOTE, Tag.TAG_STRING) ? entry.getString(ENTRY_NOTE) : "";
+            final List<String> finalIngredients = ingredients;
+            parsed.result().ifPresent(data -> byKey.put(key, new BrewersNotebookData.Entry(key, data, finalName, finalIngredients, finalNote)));
         }
         return BrewersNotebookData.fromEntryMap(byKey);
     }
@@ -309,6 +310,7 @@ public final class BrewingDiscoveryManager {
             CompoundTag entryTag = new CompoundTag();
             entryTag.putString(ENTRY_KEY, entry.key());
             entryTag.putString(ENTRY_NAME, entry.name());
+            entryTag.putString(ENTRY_NOTE, entry.note());
             SodaData.CODEC.encodeStart(NbtOps.INSTANCE, entry.data()).result().ifPresent(encoded -> {
                 if (encoded instanceof CompoundTag compound) {
                     entryTag.put(ENTRY_DATA, compound);

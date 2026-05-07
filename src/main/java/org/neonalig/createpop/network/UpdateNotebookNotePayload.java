@@ -7,12 +7,14 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import org.neonalig.createpop.CreatePop;
 
-public record UpdateNotebookNotePayload(String entryKey, String note) implements CustomPacketPayload {
+public record UpdateNotebookNotePayload(boolean mainHand, String entryKey, String note) implements CustomPacketPayload {
     public static final Type<UpdateNotebookNotePayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "update_notebook_note")
     );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, UpdateNotebookNotePayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            UpdateNotebookNotePayload::mainHand,
             ByteBufCodecs.STRING_UTF8,
             UpdateNotebookNotePayload::entryKey,
             ByteBufCodecs.STRING_UTF8,
