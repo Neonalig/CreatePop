@@ -7,6 +7,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
@@ -35,22 +36,19 @@ public final class ModCommonEvents {
     }
 
     private static void onPlayerTick(PlayerTickEvent.Post event) {
-        Player player = event.getEntity();
-        if (player.level().isClientSide || player.tickCount % 40 != 0) {
+        if (!(event.getEntity() instanceof ServerPlayer serverPlayer) || serverPlayer.tickCount % 40 != 0) {
             return;
         }
 
-        for (ItemStack stack : player.getInventory().items) {
-            BrewingDiscoveryManager.learnFromStack(player, stack);
+        for (ItemStack stack : serverPlayer.getInventory().items) {
+            BrewingDiscoveryManager.learnFromStack(serverPlayer, stack);
         }
-        for (ItemStack stack : player.getInventory().offhand) {
-            BrewingDiscoveryManager.learnFromStack(player, stack);
+        for (ItemStack stack : serverPlayer.getInventory().offhand) {
+            BrewingDiscoveryManager.learnFromStack(serverPlayer, stack);
         }
 
-        if (player instanceof ServerPlayer serverPlayer) {
-            CreatePopAdvancementGrants.grantInventoryAdvancements(serverPlayer);
-            checkSodaAdvancements(serverPlayer);
-        }
+        CreatePopAdvancementGrants.grantInventoryAdvancements(serverPlayer);
+        checkSodaAdvancements(serverPlayer);
     }
 
     private static void checkSodaAdvancements(ServerPlayer player) {
@@ -62,9 +60,8 @@ public final class ModCommonEvents {
         boolean foundAcacia = false;
         boolean foundMagma = false;
 
-        for (var itemList : new java.util.List[]{player.getInventory().items, player.getInventory().offhand}) {
-            for (Object obj : itemList) {
-                ItemStack stack = (ItemStack) obj;
+        for (java.util.List<ItemStack> itemList : java.util.List.of(player.getInventory().items, player.getInventory().offhand)) {
+            for (ItemStack stack : itemList) {
                 if (!stack.is(ModFluids.SODA_BOTTLE.get()) && !stack.is(ModFluids.SODA_BUCKET.get())) {
                     continue;
                 }
@@ -158,33 +155,33 @@ public final class ModCommonEvents {
     }
 
     private static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        Player player = event.getEntity();
-        if (player.level().isClientSide || !player.isShiftKeyDown()) {
+        if (!(event.getEntity() instanceof ServerPlayer serverPlayer) || !serverPlayer.isShiftKeyDown()) {
             return;
         }
+        ServerLevel level = serverPlayer.serverLevel();
 
         ItemStack stack = event.getItemStack();
         if (!stack.is(ModItems.BREWERS_NOTEBOOK.get())) {
             return;
         }
 
-        java.util.List<BrewingDiscoveryManager.LearnedBlockRecipe> learnedRecipes = BrewingDiscoveryManager.learnResultsFromBlock(player, player.level(), event.getPos(), event.getFace());
+        java.util.List<BrewingDiscoveryManager.LearnedBlockRecipe> learnedRecipes = BrewingDiscoveryManager.learnResultsFromBlock(serverPlayer, level, event.getPos(), event.getFace());
 
         // Add only the newly learned recipes to the notebook
         for (BrewingDiscoveryManager.LearnedBlockRecipe learnedRecipe : learnedRecipes) {
-            BrewingDiscoveryManager.addLearnedRecipeToNotebook(player, stack, learnedRecipe.data());
+            BrewingDiscoveryManager.addLearnedRecipeToNotebook(serverPlayer, stack, learnedRecipe.data());
         }
 
         if (learnedRecipes.size() == 1) {
-            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.learned_named", learnedRecipes.get(0).name()), true);
+            serverPlayer.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.learned_named", learnedRecipes.getFirst().name()), true);
         } else if (!learnedRecipes.isEmpty()) {
-            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_added", learnedRecipes.size()), true);
+            serverPlayer.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_added", learnedRecipes.size()), true);
         } else {
-            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_none"), true);
+            serverPlayer.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_none"), true);
         }
 
         if (!learnedRecipes.isEmpty()) {
-            player.level().playSound(null, player.blockPosition(), SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace("entity.villager.work_cartographer")), SoundSource.PLAYERS, 0.8F, 1.0F);
+            level.playSound(null, serverPlayer.blockPosition(), SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace("entity.villager.work_cartographer")), SoundSource.PLAYERS, 0.8F, 1.0F);
         }
     }
 

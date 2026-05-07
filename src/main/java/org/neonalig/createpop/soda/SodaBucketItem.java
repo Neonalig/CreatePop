@@ -28,7 +28,10 @@ public class SodaBucketItem extends BucketItem {
     }
 
     @Override
-    public boolean emptyContents(@Nullable Player player, Level level, BlockPos pos, BlockHitResult hitResult, ItemStack container) {
+    public boolean emptyContents(@Nullable Player player, @Nullable Level level, @Nullable BlockPos pos, @Nullable BlockHitResult hitResult, @Nullable ItemStack container) {
+        if (level == null || pos == null || hitResult == null || container == null) {
+            return false;
+        }
         SodaData data = SodaFluidStackHelper.getSodaData(container);
         if (!level.isClientSide && player != null) {
             BrewingDiscoveryManager.learn(player, data, java.util.List.of(
@@ -49,7 +52,7 @@ public class SodaBucketItem extends BucketItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(@org.jetbrains.annotations.NotNull ItemStack stack, @org.jetbrains.annotations.NotNull TooltipContext context, @org.jetbrains.annotations.NotNull List<Component> tooltip, @org.jetbrains.annotations.NotNull TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
         SodaTextHelper.appendSodaTooltip(tooltip, SodaFluidStackHelper.getSodaData(stack));
     }

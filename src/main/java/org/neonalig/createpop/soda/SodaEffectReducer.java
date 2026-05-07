@@ -127,9 +127,6 @@ public final class SodaEffectReducer {
         return new SodaData(purified, data.color(), 0.0f);
     }
 
-    public static SodaData mix(SodaData first, SodaData second, long worldSeed) {
-        return mix(first, second, 1, 1, worldSeed);
-    }
 
     public static SodaData mix(SodaData first, SodaData second, int firstAmount, int secondAmount, long worldSeed) {
         List<MobEffectInstance> combined = mergeWithDilution(first.effects(), second.effects(), firstAmount, secondAmount);
@@ -230,7 +227,7 @@ public final class SodaEffectReducer {
                 candidate = diluteEffect(source, sourceAmount, totalAmount);
             }
 
-            if (candidate != null && candidate.getDuration() >= MIN_EFFECT_DURATION) {
+            if (candidate.getDuration() >= MIN_EFFECT_DURATION) {
                 merged.add(candidate);
             }
         }
@@ -339,7 +336,7 @@ public final class SodaEffectReducer {
 
     private static MobEffectInstance diluteEffect(MobEffectInstance source, int sourceAmount, int totalAmount) {
         float ratio = sourceAmount / (float) totalAmount;
-        int duration = Math.round(source.getDuration() * ratio);
+        int duration = Math.max(MIN_EFFECT_DURATION, Math.round(source.getDuration() * ratio));
         int amplifier = source.getAmplifier();
 
         if (ratio < 0.5f && amplifier > 0) {
@@ -347,10 +344,6 @@ public final class SodaEffectReducer {
         }
         if (ratio < 0.25f && amplifier > 0) {
             amplifier--;
-        }
-
-        if (duration < MIN_EFFECT_DURATION) {
-            return null;
         }
 
         return new MobEffectInstance(
@@ -467,7 +460,7 @@ public final class SodaEffectReducer {
 
     private static float mixFlatInstabilityGain() {
         try {
-            return (float) CreatePopConfig.mixFlatInstabilityGain();
+            return CreatePopConfig.MIX_FLAT_INSTABILITY_GAIN.get().floatValue();
         } catch (IllegalStateException ignored) {
             return DEFAULT_MIX_FLAT_INSTABILITY_GAIN;
         }
@@ -475,7 +468,7 @@ public final class SodaEffectReducer {
 
     private static float instabilityThreshold() {
         try {
-            return (float) CreatePopConfig.instabilityThreshold();
+            return CreatePopConfig.INSTABILITY_THRESHOLD.get().floatValue();
         } catch (IllegalStateException ignored) {
             return DEFAULT_INSTABILITY_THRESHOLD;
         }
@@ -483,7 +476,7 @@ public final class SodaEffectReducer {
 
     private static float safeInstabilityAfterBackfire() {
         try {
-            return (float) CreatePopConfig.safeInstabilityAfterBackfire();
+            return CreatePopConfig.SAFE_INSTABILITY_AFTER_BACKFIRE.get().floatValue();
         } catch (IllegalStateException ignored) {
             return DEFAULT_SAFE_INSTABILITY_AFTER_BACKFIRE;
         }
@@ -491,7 +484,7 @@ public final class SodaEffectReducer {
 
     private static float reactionAffinityThreshold() {
         try {
-            return (float) CreatePopConfig.reactionAffinityThreshold();
+            return CreatePopConfig.REACTION_AFFINITY_THRESHOLD.get().floatValue();
         } catch (IllegalStateException ignored) {
             return DEFAULT_REACTION_AFFINITY_THRESHOLD;
         }

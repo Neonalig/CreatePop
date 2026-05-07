@@ -8,6 +8,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import org.neonalig.createpop.component.SodaData;
 
+import javax.annotation.Nonnull;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -18,7 +19,8 @@ public class SodaFluidType extends FluidType {
     }
 
     @Override
-    public ItemStack getBucket(FluidStack stack) {
+    @Nonnull
+    public ItemStack getBucket(@Nonnull FluidStack stack) {
         if (stack.isEmpty()) {
             return ItemStack.EMPTY;
         }
@@ -26,7 +28,8 @@ public class SodaFluidType extends FluidType {
     }
 
     @Override
-    public Component getDescription(FluidStack stack) {
+    @Nonnull
+    public Component getDescription(@Nonnull FluidStack stack) {
         if (stack.isEmpty()) {
             return super.getDescription(stack);
         }

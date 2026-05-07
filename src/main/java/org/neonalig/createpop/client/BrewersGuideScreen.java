@@ -16,13 +16,16 @@ import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
 import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.compat.create.DynamicSodaMixing;
+import org.neonalig.createpop.compat.jei.CreatePopJeiPlugin;
 import org.neonalig.createpop.registry.ModItems;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 public class BrewersGuideScreen extends Screen {
+    private static final ResourceLocation PAGE_TURN_SOUND = ResourceLocation.withDefaultNamespace("item.book.page_turn");
     private static final int WINDOW_WIDTH = 372;
     private static final int WINDOW_HEIGHT = 252;
     private static final int OUTER = 0xFF3A2618;
@@ -138,7 +141,7 @@ public class BrewersGuideScreen extends Screen {
     @Override
     public void onClose() {
         rememberViewState();
-        playLocalSound("item.book.page_turn", 0.8F, 0.85F);
+        playLocalSound(0.8F, 0.85F);
         super.onClose();
     }
 
@@ -176,9 +179,9 @@ public class BrewersGuideScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void render(@Nonnull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!openSoundPlayed) {
-            playLocalSound("item.book.page_turn", 0.9F, 1.15F);
+            playLocalSound(0.9F, 1.15F);
             openSoundPlayed = true;
         }
         double localMouseX = toLocalX(mouseX);
@@ -244,9 +247,6 @@ public class BrewersGuideScreen extends Screen {
         Section section = selectedSection();
         hoveredLink = null;
         activeLinks.clear();
-        if (section == null) {
-            return;
-        }
 
         guiGraphics.enableScissor(toScreenX(detailsPaneLeft + 3), toScreenY(detailsTop), toScreenX(detailsPaneLeft + detailsPaneWidth - 3), toScreenY(detailsContentBottom));
 
@@ -341,7 +341,7 @@ public class BrewersGuideScreen extends Screen {
         }
         selectedIndex = index;
         detailsScroll = 0;
-        playLocalSound("item.book.page_turn", 0.9F, 1.0F);
+        playLocalSound(0.9F, 1.0F);
         init();
         return true;
     }
@@ -371,7 +371,7 @@ public class BrewersGuideScreen extends Screen {
             return;
         }
         listScroll = nextScroll;
-        playLocalSound("item.book.page_turn", 0.75F, 1.0F);
+        playLocalSound(0.75F, 1.0F);
         init();
     }
 
@@ -390,7 +390,7 @@ public class BrewersGuideScreen extends Screen {
         } else if (selectedIndex >= listScroll + VISIBLE_SECTIONS) {
             listScroll = selectedIndex - VISIBLE_SECTIONS + 1;
         }
-        playLocalSound("item.book.page_turn", 0.9F, 1.0F);
+        playLocalSound(0.9F, 1.0F);
         init();
     }
 
@@ -399,9 +399,6 @@ public class BrewersGuideScreen extends Screen {
     }
 
     private int maxDetailsScroll(Section section) {
-        if (section == null) {
-            return 0;
-        }
         return Math.max(0, measureSectionHeight(section) - (detailsContentBottom - detailsTop));
     }
 
@@ -553,9 +550,6 @@ public class BrewersGuideScreen extends Screen {
     }
 
     private Section selectedSection() {
-        if (sections.isEmpty()) {
-            return null;
-        }
         return sections.get(Mth.clamp(selectedIndex, 0, sections.size() - 1));
     }
 
@@ -728,9 +722,7 @@ public class BrewersGuideScreen extends Screen {
 
     private boolean queryJeiLinksAvailable() {
         try {
-            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
-            Object result = pluginClass.getMethod("isRuntimeAvailable").invoke(null);
-            return Boolean.TRUE.equals(result);
+            return CreatePopJeiPlugin.isRuntimeAvailable();
         } catch (Throwable ignored) {
             return false;
         }
@@ -738,9 +730,11 @@ public class BrewersGuideScreen extends Screen {
 
     private void openLinkedItemInJei(ItemStack stack, LinkAction action) {
         try {
-            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
-            String methodName = action == LinkAction.RECIPES ? "showItemRecipes" : "showItemUses";
-            pluginClass.getMethod(methodName, ItemStack.class).invoke(null, stack);
+            if (action == LinkAction.RECIPES) {
+                CreatePopJeiPlugin.showItemRecipes(stack);
+            } else {
+                CreatePopJeiPlugin.showItemUses(stack);
+            }
         } catch (Throwable ignored) {
         }
     }
@@ -778,11 +772,11 @@ public class BrewersGuideScreen extends Screen {
         return mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom;
     }
 
-    private void playLocalSound(String soundId, float volume, float pitch) {
+    private void playLocalSound(float volume, float pitch) {
         if (minecraft == null || minecraft.player == null) {
             return;
         }
-        minecraft.player.playSound(SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace(soundId)), volume, pitch);
+        minecraft.player.playSound(SoundEvent.createVariableRangeEvent(PAGE_TURN_SOUND), volume, pitch);
     }
 
     private double toLocalX(double screenX) {

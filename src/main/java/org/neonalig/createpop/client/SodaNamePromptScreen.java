@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.neonalig.createpop.network.SubmitSodaNamePayload;
 
+import javax.annotation.Nonnull;
 import java.util.function.Supplier;
 
 public class SodaNamePromptScreen extends Screen {
@@ -42,9 +43,9 @@ public class SodaNamePromptScreen extends Screen {
             this.onClose();
         }).bounds(centerX - 110, centerY + 20, 68, 20).build());
 
-        this.addRenderableWidget(Button.builder(Component.translatable("createpop.soda_name_prompt.random"), button -> {
-            nameField.setValue(randomNameSupplier.get());
-        }).bounds(centerX - 35, centerY + 20, 68, 20).build());
+        this.addRenderableWidget(Button.builder(Component.translatable("createpop.soda_name_prompt.random"), button -> nameField.setValue(randomNameSupplier.get()))
+                .bounds(centerX - 35, centerY + 20, 68, 20)
+                .build());
 
         this.addRenderableWidget(Button.builder(Component.translatable("createpop.soda_name_prompt.cancel"), button -> this.onClose())
                 .bounds(centerX + 40, centerY + 20, 68, 20)
@@ -52,7 +53,7 @@ public class SodaNamePromptScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void render(@Nonnull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         guiGraphics.fill(0, 0, this.width, this.height, 0x66000000);
         for (net.minecraft.client.gui.components.Renderable renderable : this.renderables) {

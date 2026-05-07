@@ -6,6 +6,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,7 +38,8 @@ public final class SodaNameRegistrySavedData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+    @Nonnull
+    public CompoundTag save(@Nonnull CompoundTag tag, @Nonnull HolderLookup.Provider provider) {
         CompoundTag namesTag = new CompoundTag();
         for (Map.Entry<String, String> entry : names.entrySet()) {
             namesTag.putString(entry.getKey(), entry.getValue());
@@ -47,11 +49,11 @@ public final class SodaNameRegistrySavedData extends SavedData {
     }
 
     public String getName(String key) {
-        return names.get(key);
+        return names.getOrDefault(key, "");
     }
 
     public void putName(String key, String name) {
-        names.put(key, name);
+        names.put(key, name == null ? "" : name.trim());
         setDirty();
     }
 }

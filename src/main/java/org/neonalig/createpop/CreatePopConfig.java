@@ -92,20 +92,5 @@ public final class CreatePopConfig {
         return MIX_REACTION_INSTABILITY_GAIN.get();
     }
 
-    public static double mixFlatInstabilityGain() {
-        return MIX_FLAT_INSTABILITY_GAIN.get();
-    }
-
-    public static double instabilityThreshold() {
-        return INSTABILITY_THRESHOLD.get();
-    }
-
-    public static double safeInstabilityAfterBackfire() {
-        return SAFE_INSTABILITY_AFTER_BACKFIRE.get();
-    }
-
-    public static double reactionAffinityThreshold() {
-        return REACTION_AFFINITY_THRESHOLD.get();
-    }
 }
 

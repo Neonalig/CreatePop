@@ -20,6 +20,7 @@ import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.network.OpenBrewersNotebookPayload;
 import org.neonalig.createpop.soda.BrewingDiscoveryManager;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 public class BrewersNotebookItem extends WrittenBookItem {
@@ -28,7 +29,8 @@ public class BrewersNotebookItem extends WrittenBookItem {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    @Nonnull
+    public InteractionResultHolder<ItemStack> use(@Nonnull Level level, @Nonnull Player player, @Nonnull InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
         if (!level.isClientSide && player.isShiftKeyDown()) {
@@ -63,12 +65,12 @@ public class BrewersNotebookItem extends WrittenBookItem {
     }
 
     @Override
-    public boolean isFoil(ItemStack stack) {
+    public boolean isFoil(@Nonnull ItemStack stack) {
         return BrewingDiscoveryManager.notebookHasEntries(stack) || super.isFoil(stack);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(@Nonnull ItemStack stack, @Nonnull TooltipContext context, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
         tooltip.add(Component.translatable("item.createpop.brewers_notebook.entry_count", BrewingDiscoveryManager.notebookEntryCount(stack))
                 .withStyle(ChatFormatting.GRAY));

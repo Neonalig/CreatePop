@@ -15,13 +15,16 @@ import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
 import org.neonalig.createpop.advancement.CreatePopAdvancementGrants;
 
+import javax.annotation.Nonnull;
+
 public class CarbonatedWaterBottleItem extends Item {
     public CarbonatedWaterBottleItem(Properties properties) {
         super(properties);
     }
 
     @Override
-    public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity livingEntity) {
+    @Nonnull
+    public ItemStack finishUsingItem(@Nonnull ItemStack stack, @Nonnull Level level, @Nonnull LivingEntity livingEntity) {
         Player player = livingEntity instanceof Player p ? p : null;
 
         if (player instanceof ServerPlayer serverPlayer) {
@@ -48,17 +51,19 @@ public class CarbonatedWaterBottleItem extends Item {
     }
 
     @Override
-    public int getUseDuration(ItemStack stack, LivingEntity entity) {
+    public int getUseDuration(@Nonnull ItemStack stack, @Nonnull LivingEntity entity) {
         return 32;
     }
 
     @Override
-    public UseAnim getUseAnimation(ItemStack stack) {
+    @Nonnull
+    public UseAnim getUseAnimation(@Nonnull ItemStack stack) {
         return UseAnim.DRINK;
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
+    @Nonnull
+    public InteractionResultHolder<ItemStack> use(@Nonnull Level level, @Nonnull Player player, @Nonnull InteractionHand usedHand) {
         return ItemUtils.startUsingInstantly(level, player, usedHand);
     }
 }

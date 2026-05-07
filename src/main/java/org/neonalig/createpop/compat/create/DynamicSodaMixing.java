@@ -29,6 +29,7 @@ import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.soda.SodaEffectReducer;
 import org.neonalig.createpop.soda.SodaFluidStackHelper;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -69,7 +70,7 @@ public final class DynamicSodaMixing {
             return stabilise;
         }
 
-        Optional<MixingRecipe> dye = findSodaDyeRecipe(inputs, findDyeInput(items));
+        Optional<MixingRecipe> dye = findSodaDyeRecipe(inputs, findDyeInput(items).orElse(null));
         if (dye.isPresent()) {
             return dye;
         }
@@ -78,24 +79,23 @@ public final class DynamicSodaMixing {
         return findSodaCombinationRecipe(inputs, seed);
     }
 
-    private static Optional<MixingRecipe> findSodaDyeRecipe(List<SodaInput> inputs, Optional<DyeInput> dyeInput) {
-        if (dyeInput.isEmpty()) {
+    private static Optional<MixingRecipe> findSodaDyeRecipe(List<SodaInput> inputs, @Nullable DyeInput dyeInput) {
+        if (dyeInput == null) {
             return Optional.empty();
         }
 
-        DyeInput dye = dyeInput.get();
         for (SodaInput input : inputs) {
             if (!input.soda()) {
                 continue;
             }
 
-            SodaData recolored = recolor(input.data(), dye.color());
+            SodaData recolored = recolor(input.data(), dyeInput.color());
             FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, recolored);
             return Optional.of(recipe(
                     "soda_dye",
                     output,
                     List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
-                    Ingredient.of(dye.item())
+                    Ingredient.of(dyeInput.item())
             ));
         }
 
@@ -280,7 +280,12 @@ public final class DynamicSodaMixing {
     }
 
     private static List<FluidStack> availableFluids(BasinBlockEntity basin) {
-        var handler = basin.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, basin.getBlockPos(), null);
+        Level level = basin.getLevel();
+        if (level == null) {
+            return List.of();
+        }
+
+        var handler = level.getCapability(Capabilities.FluidHandler.BLOCK, basin.getBlockPos(), null);
         if (handler == null) {
             return List.of();
         }
@@ -296,7 +301,12 @@ public final class DynamicSodaMixing {
     }
 
     private static List<ItemStack> availableItems(BasinBlockEntity basin) {
-        IItemHandler handler = basin.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, basin.getBlockPos(), null);
+        Level level = basin.getLevel();
+        if (level == null) {
+            return List.of();
+        }
+
+        IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, basin.getBlockPos(), null);
         if (handler == null) {
             return List.of();
         }
@@ -321,11 +331,13 @@ public final class DynamicSodaMixing {
     }
 
     private static SodaData recolor(SodaData data, int dyeColor) {
-        int mixedColor = weightedAverageColor(data.color(), SodaData.withAlpha(dyeColor), 1, 2);
+        int mixedColor = blendWithDyeColor(data.color(), SodaData.withAlpha(dyeColor));
         return new SodaData(data.effects(), mixedColor, data.instability());
     }
 
-    private static int weightedAverageColor(int first, int second, int firstWeight, int secondWeight) {
+    private static int blendWithDyeColor(int first, int second) {
+        int firstWeight = 1;
+        int secondWeight = 2;
         int totalWeight = Math.max(1, firstWeight + secondWeight);
         int r = ((((first >> 16) & 0xFF) * firstWeight) + (((second >> 16) & 0xFF) * secondWeight)) / totalWeight;
         int g = ((((first >> 8) & 0xFF) * firstWeight) + (((second >> 8) & 0xFF) * secondWeight)) / totalWeight;

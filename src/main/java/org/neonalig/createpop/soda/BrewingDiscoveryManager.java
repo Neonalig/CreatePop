@@ -20,7 +20,6 @@ import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.items.IItemHandler;
 import org.neonalig.createpop.advancement.CreatePopAdvancementGrants;
 import org.neonalig.createpop.advancement.ModTriggers;
@@ -70,12 +69,11 @@ public final class BrewingDiscoveryManager {
         return notebookData(stack).size();
     }
 
-    public static boolean learnFromStack(Player player, ItemStack stack) {
+    public static void learnFromStack(Player player, ItemStack stack) {
         if (stack.is(ModFluids.SODA_BOTTLE.get()) || stack.is(ModFluids.SODA_BUCKET.get())) {
             syncKnownNameOnStack(player, stack);
-            return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of());
+            learn(player, SodaFluidStackHelper.getSodaData(stack), List.of());
         }
-        return false;
     }
 
     public static void syncKnownNamesInInventory(ServerPlayer player) {
@@ -85,25 +83,6 @@ public final class BrewingDiscoveryManager {
         for (ItemStack stack : player.getInventory().offhand) {
             syncKnownNameOnStack(player, stack);
         }
-    }
-
-    public static boolean learnFromFluid(Player player, FluidStack stack) {
-        if (!SodaFluidStackHelper.isSoda(stack) || stack.getAmount() <= 0) {
-            return false;
-        }
-        return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of());
-    }
-
-    public static int learnFromBlock(Player player, Level level, BlockPos pos, @Nullable Direction side) {
-        return learnResultsFromBlock(player, level, pos, side).size();
-    }
-
-    public static List<String> learnNamesFromBlock(Player player, Level level, BlockPos pos, @Nullable Direction side) {
-        java.util.ArrayList<String> learnedNames = new java.util.ArrayList<>();
-        for (LearnedBlockRecipe result : learnResultsFromBlock(player, level, pos, side)) {
-            learnedNames.add(result.name());
-        }
-        return List.copyOf(learnedNames);
     }
 
     public static List<LearnedBlockRecipe> learnResultsFromBlock(Player player, Level level, BlockPos pos, @Nullable Direction side) {
@@ -146,12 +125,8 @@ public final class BrewingDiscoveryManager {
         return List.copyOf(learned);
     }
 
-    public static boolean learn(Player player, SodaData data) {
-        return learnDetailed(player, data, List.of()).learned();
-    }
-
-    public static boolean learn(Player player, SodaData data, List<String> ingredients) {
-        return learnDetailed(player, data, ingredients).learned();
+    public static void learn(Player player, SodaData data, List<String> ingredients) {
+        learnDetailed(player, data, ingredients);
     }
 
     public static LearnResult learnDetailed(Player player, SodaData data, List<String> ingredients) {
@@ -173,7 +148,7 @@ public final class BrewingDiscoveryManager {
         SodaNameRegistrySavedData names = SodaNameRegistrySavedData.get(serverPlayer.serverLevel());
         String potionBaseLabel = singlePotionBaseLabel(data);
         String knownName = potionBaseLabel != null ? potionBaseLabel : names.getName(key);
-        boolean brandNew = potionBaseLabel == null && (knownName == null || knownName.isBlank());
+        boolean brandNew = potionBaseLabel == null && knownName.isBlank();
         if (brandNew) {
             knownName = SodaNameGenerator.randomName(serverPlayer.getRandom());
             names.putName(key, knownName);
@@ -218,20 +193,16 @@ public final class BrewingDiscoveryManager {
         return added;
     }
 
-    public static int addLearnedRecipeToNotebook(Player player, ItemStack notebook, SodaData data) {
+    public static void addLearnedRecipeToNotebook(Player player, ItemStack notebook, SodaData data) {
         BrewersNotebookData existing = notebookData(notebook);
         String key = BrewersNotebookData.keyFor(data);
         if (existing.containsKey(key)) {
-            return 0;
+            return;
         }
 
         BrewersNotebookData.Entry playerEntry = knownEntry(player, data);
-        if (playerEntry != null) {
-            BrewersNotebookData updated = existing.withEntry(data, playerEntry.name(), playerEntry.ingredients());
-            setNotebookData(notebook, updated);
-            return 1;
-        }
-        return 0;
+        BrewersNotebookData updated = existing.withEntry(data, playerEntry.name(), playerEntry.ingredients());
+        setNotebookData(notebook, updated);
     }
 
     public static void removeNotebookEntry(ItemStack notebook, String key) {
@@ -264,11 +235,6 @@ public final class BrewingDiscoveryManager {
 
     public static BrewersNotebookData.Entry knownEntry(Player player, SodaData data) {
         return playerData(player).entryMap().get(BrewersNotebookData.keyFor(data));
-    }
-
-    public static String knownName(Player player, SodaData data) {
-        BrewersNotebookData.Entry entry = knownEntry(player, data);
-        return entry == null ? null : entry.name();
     }
 
     public static void renameRecipe(ServerPlayer player, String key, String name) {
@@ -360,7 +326,7 @@ public final class BrewingDiscoveryManager {
             return entry.name();
         }
         String stored = SodaNameRegistrySavedData.get(level).getName(key);
-        return stored == null || stored.isBlank() ? "Unnamed Soda" : stored;
+        return stored.isBlank() ? "Unnamed Soda" : stored;
     }
 
     private static void updateInventoryNotebooksForKey(ServerPlayer player, String key, String name) {
@@ -409,7 +375,7 @@ public final class BrewingDiscoveryManager {
 
         String key = BrewersNotebookData.keyFor(data);
         String knownName = SodaNameRegistrySavedData.get(serverPlayer.serverLevel()).getName(key);
-        if (knownName == null || knownName.isBlank()) {
+        if (knownName.isBlank()) {
             return;
         }
 
@@ -459,8 +425,8 @@ public final class BrewingDiscoveryManager {
 
                 String firstName = names.getName(first.key());
                 String secondName = names.getName(second.key());
-                String firstLabel = firstName == null || firstName.isBlank() ? first.label() : firstName;
-                String secondLabel = secondName == null || secondName.isBlank() ? second.label() : secondName;
+                String firstLabel = firstName.isBlank() ? first.label() : firstName;
+                String secondLabel = secondName.isBlank() ? second.label() : secondName;
 
                 return List.of(
                         "Input Soda: " + firstLabel,
@@ -484,7 +450,7 @@ public final class BrewingDiscoveryManager {
     }
 
     private static int compareScanCandidates(ScanCandidate first, ScanCandidate second) {
-        int compare = Boolean.compare(!isSinglePotionBase(first.data()), !isSinglePotionBase(second.data()));
+        int compare = Boolean.compare(isSinglePotionBase(second.data()), isSinglePotionBase(first.data()));
         if (compare != 0) {
             return compare;
         }

@@ -12,10 +12,12 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.neonalig.createpop.component.BrewersNotebookData;
+import org.neonalig.createpop.compat.jei.CreatePopJeiPlugin;
 import org.neonalig.createpop.network.RemoveNotebookEntryPayload;
 import org.neonalig.createpop.network.UpdateNotebookNotePayload;
 import org.neonalig.createpop.soda.SodaTextHelper;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -511,7 +513,7 @@ public class BrewersNotebookScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void render(@Nonnull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!openSoundPlayed) {
             playLocalSound("item.book.page_turn", 0.9F, 1.15F);
             openSoundPlayed = true;
@@ -828,9 +830,7 @@ public class BrewersNotebookScreen extends Screen {
 
     private boolean queryJeiRecipeLinksAvailable() {
         try {
-            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
-            Object result = pluginClass.getMethod("isRuntimeAvailable").invoke(null);
-            return Boolean.TRUE.equals(result);
+            return CreatePopJeiPlugin.isRuntimeAvailable();
         } catch (Throwable ignored) {
             return false;
         }
@@ -838,8 +838,7 @@ public class BrewersNotebookScreen extends Screen {
 
     private void openSodaRecipeInJei(org.neonalig.createpop.component.SodaData data) {
         try {
-            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
-            pluginClass.getMethod("showSodaRecipe", org.neonalig.createpop.component.SodaData.class).invoke(null, data);
+            CreatePopJeiPlugin.showSodaRecipe(data);
         } catch (Throwable ignored) {
         }
     }

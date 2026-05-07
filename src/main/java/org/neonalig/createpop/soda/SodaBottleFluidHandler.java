@@ -7,6 +7,8 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
 import org.neonalig.createpop.compat.create.DynamicSodaMixing;
 import org.neonalig.createpop.registry.ModFluids;
 
+import javax.annotation.Nonnull;
+
 public class SodaBottleFluidHandler implements IFluidHandlerItem {
     private ItemStack container;
 
@@ -15,6 +17,7 @@ public class SodaBottleFluidHandler implements IFluidHandlerItem {
     }
 
     @Override
+    @Nonnull
     public ItemStack getContainer() {
         return container;
     }
@@ -25,6 +28,7 @@ public class SodaBottleFluidHandler implements IFluidHandlerItem {
     }
 
     @Override
+    @Nonnull
     public FluidStack getFluidInTank(int tank) {
         if (container.is(ModFluids.SODA_BOTTLE.get())) {
             return SodaFluidStackHelper.sodaBottleFluid(container);
@@ -38,12 +42,12 @@ public class SodaBottleFluidHandler implements IFluidHandlerItem {
     }
 
     @Override
-    public boolean isFluidValid(int tank, FluidStack stack) {
+    public boolean isFluidValid(int tank, @Nonnull FluidStack stack) {
         return SodaFluidStackHelper.isSoda(stack) || SodaFluidStackHelper.isCarbonatedWater(stack);
     }
 
     @Override
-    public int fill(FluidStack resource, FluidAction action) {
+    public int fill(@Nonnull FluidStack resource, @Nonnull FluidAction action) {
         if (!container.is(Items.GLASS_BOTTLE)) {
             return 0;
         }
@@ -78,7 +82,8 @@ public class SodaBottleFluidHandler implements IFluidHandlerItem {
     }
 
     @Override
-    public FluidStack drain(FluidStack resource, FluidAction action) {
+    @Nonnull
+    public FluidStack drain(@Nonnull FluidStack resource, @Nonnull FluidAction action) {
         if (container.getCount() != 1 || resource.getAmount() < DynamicSodaMixing.DRINK_AMOUNT) {
             return FluidStack.EMPTY;
         }
@@ -95,7 +100,8 @@ public class SodaBottleFluidHandler implements IFluidHandlerItem {
     }
 
     @Override
-    public FluidStack drain(int maxDrain, FluidAction action) {
+    @Nonnull
+    public FluidStack drain(int maxDrain, @Nonnull FluidAction action) {
         if (container.getCount() != 1 || maxDrain < DynamicSodaMixing.DRINK_AMOUNT) {
             return FluidStack.EMPTY;
         }
