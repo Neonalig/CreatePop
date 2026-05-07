@@ -18,5 +18,10 @@
 	"createpop.command.soda_debug.effects": "Effects:",
 	"createpop.command.soda_debug.no_effects": "Effects: none",
 	"createpop.command.soda_debug.hand.main": "main",
-	"createpop.command.soda_debug.hand.off": "off"
+	"createpop.command.soda_debug.hand.off": "off",
+	"createpop.configuration.title": "Create Pop Configuration",
+	"createpop.configuration.section.createpop.client.toml": "",
+	"createpop.configuration.section.createpop.client.toml.title": "Client",
+	"createpop.configuration.enableJeiPotionHints": "Enable Potion Hint Recipes (Requires JEI)",
+	"createpop.configuration.enableJeiPotionHints.tooltip": "Shows JEI mixer hint recipes for deterministic soda reactions once the world seed is known."
 }

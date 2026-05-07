@@ -45,6 +45,7 @@ public final class DynamicSodaMixing {
         if (fluids.isEmpty()) {
             return Optional.empty();
         }
+        List<ItemStack> items = availableItems(basin);
 
         List<SodaInput> inputs = fluids.stream()
                 .filter(stack -> stack.getAmount() >= DRINK_AMOUNT)
@@ -52,12 +53,12 @@ public final class DynamicSodaMixing {
                 .flatMap(Optional::stream)
                 .toList();
 
-        Optional<MixingRecipe> base = findCarbonatedPotionRecipe(inputs);
+        Optional<MixingRecipe> base = findCarbonatedPotionRecipe(inputs, items);
         if (base.isPresent()) {
             return base;
         }
 
-        Optional<MixingRecipe> dye = findSodaDyeRecipe(inputs, findDyeInput(availableItems(basin)));
+        Optional<MixingRecipe> dye = findSodaDyeRecipe(inputs, findDyeInput(items));
         if (dye.isPresent()) {
             return dye;
         }
@@ -90,7 +91,7 @@ public final class DynamicSodaMixing {
         return Optional.empty();
     }
 
-    private static Optional<MixingRecipe> findCarbonatedPotionRecipe(List<SodaInput> inputs) {
+    private static Optional<MixingRecipe> findCarbonatedPotionRecipe(List<SodaInput> inputs, List<ItemStack> items) {
         for (SodaInput first : inputs) {
             if (!first.carbonatedWater()) {
                 continue;
@@ -102,6 +103,20 @@ public final class DynamicSodaMixing {
                 SodaData data = SodaEffectReducer.baseFromPotion(second.data().effects(), second.data().color());
                 FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, data);
                 return Optional.of(recipe("soda_base", output, List.of(exactFluid(first.stack(), DRINK_AMOUNT), exactFluid(second.stack(), DRINK_AMOUNT))));
+            }
+
+            for (ItemStack item : items) {
+                Optional<SodaData> potionData = potionBaseData(item);
+                if (potionData.isEmpty()) {
+                    continue;
+                }
+                FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, potionData.get());
+                return Optional.of(recipe(
+                        "soda_base_item",
+                        output,
+                        List.of(exactFluid(first.stack(), DRINK_AMOUNT)),
+                        Ingredient.of(item)
+                ));
             }
         }
         return Optional.empty();
@@ -204,6 +219,26 @@ public final class DynamicSodaMixing {
         int g = ((((first >> 8) & 0xFF) * firstWeight) + (((second >> 8) & 0xFF) * secondWeight)) / totalWeight;
         int b = (((first & 0xFF) * firstWeight) + ((second & 0xFF) * secondWeight)) / totalWeight;
         return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
+    private static Optional<SodaData> potionBaseData(ItemStack stack) {
+        PotionContents potion = stack.get(DataComponents.POTION_CONTENTS);
+        if (potion == null || !potion.hasEffects()) {
+            return Optional.empty();
+        }
+
+        List<MobEffectInstance> tierOneEffects = new ArrayList<>();
+        for (MobEffectInstance effect : potion.getAllEffects()) {
+            if (effect.getAmplifier() == 0 && effect.getEffect().value().getCategory() == MobEffectCategory.BENEFICIAL) {
+                tierOneEffects.add(new MobEffectInstance(effect));
+            }
+        }
+
+        if (tierOneEffects.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(SodaEffectReducer.baseFromPotion(tierOneEffects, potion.getColor()));
     }
 
 

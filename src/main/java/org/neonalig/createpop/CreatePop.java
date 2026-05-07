@@ -6,8 +6,12 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -36,15 +40,18 @@ public class CreatePop {
             })
             .build());
 
-    public CreatePop(IEventBus modEventBus) {
+    public CreatePop(IEventBus modEventBus, ModContainer modContainer) {
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
         ModDataComponents.register(modEventBus);
         ModFluids.register(modEventBus);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, CreatePopConfig.CLIENT_SPEC);
         modEventBus.addListener(ModCapabilities::registerCapabilities);
         NeoForge.EVENT_BUS.addListener(SodaDebugCommand::register);
         if (FMLEnvironment.dist == Dist.CLIENT) {
+            IConfigScreenFactory configScreenFactory = ConfigurationScreen::new;
+            modContainer.registerExtensionPoint(IConfigScreenFactory.class, configScreenFactory);
             ModClientEvents.register(modEventBus);
         }
     }
