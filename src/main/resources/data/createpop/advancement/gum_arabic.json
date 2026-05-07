@@ -1,0 +1,23 @@
+{
+  "parent": "createpop:proof_of_concept",
+  "display": {
+    "icon": {
+      "id": "minecraft:stripped_acacia_log"
+    },
+    "title": {
+      "translate": "advancement.createpop.gum_arabic.title"
+    },
+    "description": {
+      "translate": "advancement.createpop.gum_arabic.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "stabilise_acacia": {
+      "trigger": "createpop:stabilised_with_acacia"
+    }
+  }
+}

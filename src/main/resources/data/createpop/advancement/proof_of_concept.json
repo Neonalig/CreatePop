@@ -1,0 +1,23 @@
+{
+  "parent": "createpop:root",
+  "display": {
+    "icon": {
+      "id": "createpop:soda_bottle"
+    },
+    "title": {
+      "translate": "advancement.createpop.proof_of_concept.title"
+    },
+    "description": {
+      "translate": "advancement.createpop.proof_of_concept.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "obtain_soda": {
+      "trigger": "createpop:obtained_soda"
+    }
+  }
+}

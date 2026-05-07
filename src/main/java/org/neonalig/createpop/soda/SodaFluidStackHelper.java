@@ -34,7 +34,12 @@ public final class SodaFluidStackHelper {
     }
 
     public static ItemStack sodaBucket(FluidStack stack) {
-        return sodaBucket(getSodaData(stack));
+        ItemStack item = sodaBucket(getSodaData(stack));
+        String stabiliser = stack.get(ModDataComponents.SODA_STABILISER.get());
+        if (stabiliser != null) {
+            item.set(ModDataComponents.SODA_STABILISER.get(), stabiliser);
+        }
+        return item;
     }
 
     public static ItemStack sodaBucket(SodaData data) {
@@ -48,7 +53,12 @@ public final class SodaFluidStackHelper {
     }
 
     public static ItemStack sodaBottle(FluidStack stack) {
-        return sodaBottle(getSodaData(stack));
+        ItemStack item = sodaBottle(getSodaData(stack));
+        String stabiliser = stack.get(ModDataComponents.SODA_STABILISER.get());
+        if (stabiliser != null) {
+            item.set(ModDataComponents.SODA_STABILISER.get(), stabiliser);
+        }
+        return item;
     }
 
     public static ItemStack sodaBottle(SodaData data) {

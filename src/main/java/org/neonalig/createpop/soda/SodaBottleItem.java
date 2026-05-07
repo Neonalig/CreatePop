@@ -16,6 +16,8 @@ import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.network.chat.Component;
+import org.neonalig.createpop.advancement.CreatePopAdvancementGrants;
+import org.neonalig.createpop.advancement.ModTriggers;
 import org.neonalig.createpop.component.SodaData;
 
 import java.util.List;
@@ -32,6 +34,8 @@ public class SodaBottleItem extends Item {
         if (player instanceof ServerPlayer serverPlayer) {
             CriteriaTriggers.CONSUME_ITEM.trigger(serverPlayer, stack);
             serverPlayer.awardStat(Stats.ITEM_USED.get(this));
+            CreatePopAdvancementGrants.grantDrankSoda(serverPlayer);
+            ModTriggers.DRANK_SODA.trigger(serverPlayer);
         }
 
         if (!level.isClientSide) {

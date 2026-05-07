@@ -1,0 +1,23 @@
+{
+  "parent": "createpop:proof_of_concept",
+  "display": {
+    "icon": {
+      "id": "minecraft:magma_cream"
+    },
+    "title": {
+      "translate": "advancement.createpop.the_emulsifier.title"
+    },
+    "description": {
+      "translate": "advancement.createpop.the_emulsifier.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "stabilise_magma_cream": {
+      "trigger": "createpop:stabilised_with_magma_cream"
+    }
+  }
+}

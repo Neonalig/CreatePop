@@ -1,0 +1,32 @@
+{
+  "parent": "createpop:required_reading",
+  "display": {
+    "icon": {
+      "id": "createpop:brewers_notebook"
+    },
+    "title": {
+      "translate": "advancement.createpop.blank_page_problem.title"
+    },
+    "description": {
+      "translate": "advancement.createpop.blank_page_problem.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "get_notebook": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "createpop:brewers_notebook"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

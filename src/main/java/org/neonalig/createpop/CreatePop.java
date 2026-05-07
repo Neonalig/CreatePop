@@ -15,6 +15,7 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import org.neonalig.createpop.advancement.ModTriggers;
 import org.neonalig.createpop.client.ModClientEvents;
 import org.neonalig.createpop.command.SodaDebugCommand;
 import org.neonalig.createpop.event.ModCommonEvents;
@@ -53,6 +54,7 @@ public class CreatePop {
         CREATIVE_MODE_TABS.register(modEventBus);
         ModDataComponents.register(modEventBus);
         ModFluids.register(modEventBus);
+        ModTriggers.register(modEventBus);
         modContainer.registerConfig(ModConfig.Type.CLIENT, CreatePopConfig.CLIENT_SPEC);
         modContainer.registerConfig(ModConfig.Type.COMMON, CreatePopConfig.COMMON_SPEC);
         modEventBus.addListener(ModCapabilities::registerCapabilities);

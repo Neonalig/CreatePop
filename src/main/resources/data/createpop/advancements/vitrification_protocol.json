@@ -1,0 +1,23 @@
+{
+  "parent": "createpop:zero_defects",
+  "display": {
+    "icon": {
+      "id": "minecraft:amethyst_shard"
+    },
+    "title": {
+      "translate": "advancement.createpop.vitrification_protocol.title"
+    },
+    "description": {
+      "translate": "advancement.createpop.vitrification_protocol.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "stabilise_amethyst": {
+      "trigger": "createpop:stabilised_with_amethyst"
+    }
+  }
+}

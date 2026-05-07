@@ -24,6 +24,7 @@ import net.neoforged.neoforge.items.IItemHandler;
 import org.neonalig.createpop.CreatePop;
 import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.component.SodaData;
+import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.soda.SodaEffectReducer;
 import org.neonalig.createpop.soda.SodaFluidStackHelper;
 
@@ -198,6 +199,7 @@ public final class DynamicSodaMixing {
                     if (reduction <= 0f) continue;
                     SodaData stabilised = SodaEffectReducer.purifyWithAmethyst(input.data());
                     FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, stabilised);
+                    // Amethyst sets instability to exactly 0; detected via instability check, no tag needed.
                     return Optional.of(recipe("stabilise_full", output,
                             List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
                             HeatCondition.SUPERHEATED,
@@ -208,6 +210,7 @@ public final class DynamicSodaMixing {
                     if (reduction <= 0f) continue;
                     SodaData stabilised = new SodaData(input.data().effects(), input.data().color(), input.data().instability() * (1f - reduction));
                     FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, stabilised);
+                    output.set(ModDataComponents.SODA_STABILISER.get(), "magma_cream");
                     return Optional.of(recipe("stabilise_moderate", output,
                             List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
                             HeatCondition.HEATED,
@@ -218,6 +221,7 @@ public final class DynamicSodaMixing {
                     if (reduction <= 0f) continue;
                     SodaData stabilised = new SodaData(input.data().effects(), input.data().color(), input.data().instability() * (1f - reduction));
                     FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, stabilised);
+                    output.set(ModDataComponents.SODA_STABILISER.get(), "acacia");
                     return Optional.of(recipe("stabilise_weak", output,
                             List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
                             HeatCondition.HEATED,

@@ -115,5 +115,50 @@
 	"createpop.configuration.magmaCreamInstabilityReduction": "Magma Cream Instability Reduction",
 	"createpop.configuration.magmaCreamInstabilityReduction.tooltip": "Fraction of instability removed when mixing soda with magma cream in a heated mixer (0.0–1.0).",
 	"createpop.configuration.amethystShardInstabilityReduction": "Amethyst Shard Instability Reduction",
-	"createpop.configuration.amethystShardInstabilityReduction.tooltip": "Fraction of instability removed when mixing soda with an amethyst shard in a superheated mixer (0.0–1.0)."
+	"createpop.configuration.amethystShardInstabilityReduction.tooltip": "Fraction of instability removed when mixing soda with an amethyst shard in a superheated mixer (0.0–1.0).",
+
+	"advancement.createpop.root.title": "Create: Pop",
+	"advancement.createpop.root.description": "You've acquired a taste for fizz. Nobody mentioned the research.",
+
+	"advancement.createpop.required_reading.title": "Required Reading",
+	"advancement.createpop.required_reading.description": "You've acquired the guide. Whether you read it is between you and the next explosion.",
+
+	"advancement.createpop.blank_page_problem.title": "The Blank Page Problem",
+	"advancement.createpop.blank_page_problem.description": "A notebook! Perfect for recording discoveries, doodles, or passive-aggressive quality notes about batch #12.",
+
+	"advancement.createpop.marketing_department.title": "Marketing Department of One",
+	"advancement.createpop.marketing_department.description": "You have named a soda. It is yours now. Whatever it does to the next person is on your brand.",
+
+	"advancement.createpop.bloop.title": "Bloop",
+	"advancement.createpop.bloop.description": "You have made water fizzy using a diamond and a rotating machine. The diamond has no comment.",
+
+	"advancement.createpop.basic_hydration.title": "Basic Hydration",
+	"advancement.createpop.basic_hydration.description": "It's water. Technically. The bubbles are doing something to your teeth and you've chosen to call it refreshing.",
+
+	"advancement.createpop.proof_of_concept.title": "Proof of Concept",
+	"advancement.createpop.proof_of_concept.description": "A potion, some fizzy water, and industrial rotation. The soda exists. Please do not ask about the residue.",
+
+	"advancement.createpop.science_part.title": "The Science Part",
+	"advancement.createpop.science_part.description": "You have consumed the results of your own experiment. The control group declined to participate.",
+
+	"advancement.createpop.overcrowded.title": "Overcrowded In Here",
+	"advancement.createpop.overcrowded.description": "You mixed two sodas together. The resulting effects are technically all present and nobody is happy about it.",
+
+	"advancement.createpop.oopsie_fizzie.title": "Oopsie Fizzie",
+	"advancement.createpop.oopsie_fizzie.description": "Your soda has developed negative effects. This was statistically likely. The guide mentioned 'instability.'",
+
+	"advancement.createpop.grand_opening.title": "Grand Opening",
+	"advancement.createpop.grand_opening.description": "You poured a carefully developed soda onto the ground. It destabilised on contact. The floor has absorbed the results.",
+
+	"advancement.createpop.zero_defects.title": "Zero Defects Policy",
+	"advancement.createpop.zero_defects.description": "Zero percent instability. This soda is as stable as it will ever be, which means someone worked very hard or got very lucky.",
+
+	"advancement.createpop.gum_arabic.title": "Gum Arabic, As A Treat",
+	"advancement.createpop.gum_arabic.description": "You used bark to stabilise a soda. This is, in fact, the correct use of gum arabic. Congratulations on the accidental chemistry.",
+
+	"advancement.createpop.vitrification_protocol.title": "Vitrification Protocol",
+	"advancement.createpop.vitrification_protocol.description": "Superheated amethyst. Purified effects. Zero instability. You have unknowingly performed industrial crystalline lattice vitrification.",
+
+	"advancement.createpop.the_emulsifier.title": "The Emulsifier",
+	"advancement.createpop.the_emulsifier.description": "The magma cream stabilised the soda. The soda did not thank the magma cream. That's just how emulsifiers work."
 }

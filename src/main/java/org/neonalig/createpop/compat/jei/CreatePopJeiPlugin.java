@@ -112,12 +112,12 @@ public class CreatePopJeiPlugin implements IModPlugin {
         return new ISubtypeInterpreter<>() {
             @Override
             public Object getSubtypeData(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
-                return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
             }
 
             @Override
             public String getLegacyStringSubtypeInfo(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
-                return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
             }
         };
     }
@@ -127,7 +127,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
             @Override
             public Object getSubtypeData(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
                 if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
-                    return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                    return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
                 }
                 return "";
             }
@@ -135,7 +135,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
             @Override
             public String getLegacyStringSubtypeInfo(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
                 if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
-                    return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                    return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
                 }
                 return "";
             }
@@ -628,17 +628,6 @@ public class CreatePopJeiPlugin implements IModPlugin {
         key.append("c=").append(data.color())
                 .append(";i=").append(data.instability())
                 .append(";e=");
-        for (MobEffectInstance effect : SodaEffectReducer.copyEffects(data.effects())) {
-            key.append(SodaEffectReducer.effectId(effect))
-                    .append('@').append(effect.getAmplifier())
-                    .append('@').append(effect.getDuration())
-                    .append('|');
-        }
-        return key.toString();
-    }
-
-    private static String sodaEffectsSubtypeKey(SodaData data) {
-        StringBuilder key = new StringBuilder("e=");
         for (MobEffectInstance effect : SodaEffectReducer.copyEffects(data.effects())) {
             key.append(SodaEffectReducer.effectId(effect))
                     .append('@').append(effect.getAmplifier())

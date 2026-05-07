@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemUtils;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
+import org.neonalig.createpop.advancement.CreatePopAdvancementGrants;
 
 public class CarbonatedWaterBottleItem extends Item {
     public CarbonatedWaterBottleItem(Properties properties) {
@@ -26,6 +27,7 @@ public class CarbonatedWaterBottleItem extends Item {
         if (player instanceof ServerPlayer serverPlayer) {
             CriteriaTriggers.CONSUME_ITEM.trigger(serverPlayer, stack);
             serverPlayer.awardStat(Stats.ITEM_USED.get(this));
+            CreatePopAdvancementGrants.grantBasicHydration(serverPlayer);
         }
 
         if (player != null && player.getAbilities().instabuild) {

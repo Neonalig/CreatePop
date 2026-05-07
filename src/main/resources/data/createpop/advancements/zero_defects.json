@@ -1,0 +1,23 @@
+{
+  "parent": "createpop:proof_of_concept",
+  "display": {
+    "icon": {
+      "id": "createpop:soda_bottle"
+    },
+    "title": {
+      "translate": "advancement.createpop.zero_defects.title"
+    },
+    "description": {
+      "translate": "advancement.createpop.zero_defects.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "perfect_soda": {
+      "trigger": "createpop:obtained_perfect_soda"
+    }
+  }
+}
