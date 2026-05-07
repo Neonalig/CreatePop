@@ -45,9 +45,12 @@ public final class ModCommonEvents {
             return;
         }
 
-        int learned = BrewingDiscoveryManager.learnFromBlock(player, player.level(), event.getPos(), event.getFace());
-        if (learned > 0) {
-            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_added", learned), true);
+        java.util.List<String> learnedNames = BrewingDiscoveryManager.learnNamesFromBlock(player, player.level(), event.getPos(), event.getFace());
+        BrewingDiscoveryManager.writePlayerRecipesToNotebook(player, stack);
+        if (learnedNames.size() == 1) {
+            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.learned_named", learnedNames.get(0)), true);
+        } else if (!learnedNames.isEmpty()) {
+            player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_added", learnedNames.size()), true);
         } else {
             player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_none"), true);
         }

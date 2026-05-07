@@ -601,18 +601,27 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
     private static FluidStack sodaForJei(SodaData data) {
         FluidStack soda = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, data);
+        var minecraft = Minecraft.getInstance();
+        var entry = minecraft.player == null ? null : BrewingDiscoveryManager.knownEntry(minecraft.player, data);
+        String sodaName = entry == null ? null : entry.name();
         Component effectsSummary = buildEffectSummary(data.effects());
         Component instabilityText = Component.translatable(
                 "createpop.soda.tooltip.instability",
                 String.format(Locale.ROOT, "%.2f", data.instability())
         ).withColor(0xFFB347); // amber/orange
 
-        MutableComponent customName = Component.translatable("fluid_type.createpop.soda")
+        MutableComponent customName = (sodaName == null || sodaName.isBlank()
+                ? Component.translatable("fluid_type.createpop.soda")
+                : Component.literal(sodaName))
                 .append(Component.literal(" ("))
                 .append(effectsSummary)
                 .append(Component.literal(", "))
                 .append(instabilityText)
                 .append(Component.literal(")"));
+
+        if (entry != null && !entry.ingredients().isEmpty()) {
+            customName.append(Component.literal(" [" + String.join(", ", entry.ingredients()) + "]"));
+        }
         soda.set(DataComponents.CUSTOM_NAME, customName);
         // Attach potion-like tooltip data so JEI fluid tooltips expose effects for preview stacks.
         PotionContents tooltipContents = new PotionContents(Optional.empty(), Optional.of(data.color() & 0x00FFFFFF), SodaEffectReducer.copyEffects(data.effects()));

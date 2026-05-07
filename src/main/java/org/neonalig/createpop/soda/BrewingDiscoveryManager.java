@@ -5,20 +5,30 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.items.IItemHandler;
+import org.neonalig.createpop.network.OpenSodaNamePromptPayload;
 import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.component.SodaData;
+import org.neonalig.createpop.compat.create.DynamicSodaMixing;
+import org.neonalig.createpop.registry.ModItems;
 import org.neonalig.createpop.registry.ModFluids;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import javax.annotation.Nullable;
 import java.util.LinkedHashMap;
@@ -31,6 +41,7 @@ public final class BrewingDiscoveryManager {
     private static final String NOTEBOOK_RECIPES_TAG = "createpop_notebook_recipes";
     private static final String ENTRY_KEY = "key";
     private static final String ENTRY_DATA = "data";
+    private static final String ENTRY_NAME = "name";
     private static final String ENTRY_INGREDIENTS = "ingredients";
 
     private BrewingDiscoveryManager() {
@@ -58,11 +69,7 @@ public final class BrewingDiscoveryManager {
 
     public static boolean learnFromStack(Player player, ItemStack stack) {
         if (stack.is(ModFluids.SODA_BOTTLE.get()) || stack.is(ModFluids.SODA_BUCKET.get())) {
-            return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of(
-                    "Carbonated Water",
-                    "Potion/Soda reactants",
-                    sourceLabel(stack)
-            ));
+            return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of());
         }
         return false;
     }
@@ -71,15 +78,15 @@ public final class BrewingDiscoveryManager {
         if (!SodaFluidStackHelper.isSoda(stack) || stack.getAmount() <= 0) {
             return false;
         }
-        return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of(
-                "Carbonated Water",
-                "Potion/Soda reactants",
-                "Fluid vessel sample"
-        ));
+        return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of());
     }
 
     public static int learnFromBlock(Player player, Level level, BlockPos pos, @Nullable Direction side) {
-        int learned = 0;
+        return learnNamesFromBlock(player, level, pos, side).size();
+    }
+
+    public static List<String> learnNamesFromBlock(Player player, Level level, BlockPos pos, @Nullable Direction side) {
+        java.util.ArrayList<String> learnedNames = new java.util.ArrayList<>();
 
         var fluidHandler = level.getCapability(Capabilities.FluidHandler.BLOCK, pos, side);
         if (fluidHandler == null && side != null) {
@@ -87,8 +94,9 @@ public final class BrewingDiscoveryManager {
         }
         if (fluidHandler != null) {
             for (int i = 0; i < fluidHandler.getTanks(); i++) {
-                if (learnFromFluid(player, fluidHandler.getFluidInTank(i))) {
-                    learned++;
+                LearnResult result = learnDetailed(player, SodaFluidStackHelper.getSodaData(fluidHandler.getFluidInTank(i)), List.of());
+                if (result.learned()) {
+                    learnedNames.add(result.name());
                 }
             }
         }
@@ -99,36 +107,68 @@ public final class BrewingDiscoveryManager {
         }
         if (itemHandler != null) {
             for (int slot = 0; slot < itemHandler.getSlots(); slot++) {
-                if (learnFromStack(player, itemHandler.getStackInSlot(slot))) {
-                    learned++;
+                ItemStack stack = itemHandler.getStackInSlot(slot);
+                if (!stack.is(ModFluids.SODA_BOTTLE.get()) && !stack.is(ModFluids.SODA_BUCKET.get())) {
+                    continue;
+                }
+                LearnResult result = learnDetailed(player, SodaFluidStackHelper.getSodaData(stack), List.of());
+                if (result.learned()) {
+                    learnedNames.add(result.name());
                 }
             }
         }
 
-        return learned;
+        return List.copyOf(learnedNames);
     }
 
     public static boolean learn(Player player, SodaData data) {
-        return learn(player, data, List.of());
+        return learnDetailed(player, data, List.of()).learned();
     }
 
     public static boolean learn(Player player, SodaData data, List<String> ingredients) {
+        return learnDetailed(player, data, ingredients).learned();
+    }
+
+    public static LearnResult learnDetailed(Player player, SodaData data, List<String> ingredients) {
         if (data.equals(SodaData.EMPTY)) {
-            return false;
+            return LearnResult.none();
         }
 
-        BrewersNotebookData known = playerData(player);
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return LearnResult.none();
+        }
+
+        BrewersNotebookData known = playerData(serverPlayer);
         String key = BrewersNotebookData.keyFor(data);
         if (known.containsKey(key)) {
-            return false;
+            String existingName = nameForEntry(key, known, serverPlayer.serverLevel());
+            return new LearnResult(false, existingName);
+        }
+
+        SodaNameRegistrySavedData names = SodaNameRegistrySavedData.get(serverPlayer.serverLevel());
+        String knownName = names.getName(key);
+        boolean brandNew = knownName == null || knownName.isBlank();
+        if (brandNew) {
+            knownName = SodaNameGenerator.randomName(serverPlayer.getRandom());
+            names.putName(key, knownName);
         }
 
         List<String> normalizedIngredients = ingredients.isEmpty() ? List.of(
                 "Carbonated Water",
                 "Potion/Soda reactants"
         ) : ingredients;
-        setPlayerData(player, known.withEntry(data, normalizedIngredients));
-        return true;
+        if (normalizedIngredients.size() == 2
+                && "Carbonated Water".equals(normalizedIngredients.get(0))
+                && "Potion/Soda reactants".equals(normalizedIngredients.get(1))) {
+            normalizedIngredients = inferLikelyIngredients(data, serverPlayer.serverLevel());
+        }
+        setPlayerData(serverPlayer, known.withEntry(data, knownName, normalizedIngredients));
+
+        if (brandNew) {
+            PacketDistributor.sendToPlayer(serverPlayer, new OpenSodaNamePromptPayload(key, knownName));
+        }
+
+        return new LearnResult(true, knownName);
     }
 
     public static int learnFromNotebook(Player player, ItemStack notebook) {
@@ -165,6 +205,33 @@ public final class BrewingDiscoveryManager {
         return playerData(player).asMap().keySet();
     }
 
+    public static BrewersNotebookData.Entry knownEntry(Player player, SodaData data) {
+        return playerData(player).entryMap().get(BrewersNotebookData.keyFor(data));
+    }
+
+    public static String knownName(Player player, SodaData data) {
+        BrewersNotebookData.Entry entry = knownEntry(player, data);
+        return entry == null ? null : entry.name();
+    }
+
+    public static void renameRecipe(ServerPlayer player, String key, String name) {
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+
+        SodaNameRegistrySavedData.get(player.serverLevel()).putName(key, trimmed);
+        BrewersNotebookData known = playerData(player);
+        BrewersNotebookData.Entry existing = known.entryMap().get(key);
+        if (existing != null) {
+            Map<String, BrewersNotebookData.Entry> updated = new LinkedHashMap<>(known.entryMap());
+            updated.put(key, new BrewersNotebookData.Entry(existing.key(), existing.data(), trimmed, existing.ingredients()));
+            setPlayerData(player, BrewersNotebookData.fromEntryMap(updated));
+        }
+
+        updateInventoryNotebooksForKey(player, key, trimmed);
+    }
+
     private static BrewersNotebookData playerData(Player player) {
         CompoundTag root = player.getPersistentData();
         if (!root.contains(PLAYER_RECIPES_TAG, Tag.TAG_LIST)) {
@@ -193,8 +260,10 @@ public final class BrewingDiscoveryManager {
                 }
                 ingredients = List.copyOf(loaded);
             }
+            String name = entry.contains(ENTRY_NAME, Tag.TAG_STRING) ? entry.getString(ENTRY_NAME) : "Unnamed Soda";
             List<String> finalIngredients = ingredients;
-            parsed.result().ifPresent(data -> byKey.put(key, new BrewersNotebookData.Entry(key, data, finalIngredients)));
+            String finalName = name;
+            parsed.result().ifPresent(data -> byKey.put(key, new BrewersNotebookData.Entry(key, data, finalName, finalIngredients)));
         }
         return BrewersNotebookData.fromEntryMap(byKey);
     }
@@ -208,6 +277,7 @@ public final class BrewingDiscoveryManager {
         for (BrewersNotebookData.Entry entry : data.entries()) {
             CompoundTag entryTag = new CompoundTag();
             entryTag.putString(ENTRY_KEY, entry.key());
+            entryTag.putString(ENTRY_NAME, entry.name());
             SodaData.CODEC.encodeStart(NbtOps.INSTANCE, entry.data()).result().ifPresent(encoded -> {
                 if (encoded instanceof CompoundTag compound) {
                     entryTag.put(ENTRY_DATA, compound);
@@ -223,8 +293,118 @@ public final class BrewingDiscoveryManager {
         return list;
     }
 
-    private static String sourceLabel(ItemStack stack) {
-        return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+    private static String nameForEntry(String key, BrewersNotebookData known, net.minecraft.server.level.ServerLevel level) {
+        BrewersNotebookData.Entry entry = known.entryMap().get(key);
+        if (entry != null && !entry.name().isBlank()) {
+            return entry.name();
+        }
+        String stored = SodaNameRegistrySavedData.get(level).getName(key);
+        return stored == null || stored.isBlank() ? "Unnamed Soda" : stored;
+    }
+
+    private static void updateInventoryNotebooksForKey(ServerPlayer player, String key, String name) {
+        for (ItemStack stack : player.getInventory().items) {
+            renameNotebookEntry(stack, key, name);
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            renameNotebookEntry(stack, key, name);
+        }
+    }
+
+    private static void renameNotebookEntry(ItemStack stack, String key, String name) {
+        if (!stack.is(ModItems.BREWERS_NOTEBOOK.get())) {
+            return;
+        }
+        BrewersNotebookData data = notebookData(stack);
+        BrewersNotebookData.Entry entry = data.entryMap().get(key);
+        if (entry == null) {
+            return;
+        }
+        Map<String, BrewersNotebookData.Entry> updated = new LinkedHashMap<>(data.entryMap());
+        updated.put(key, new BrewersNotebookData.Entry(entry.key(), entry.data(), name, entry.ingredients()));
+        setNotebookData(stack, BrewersNotebookData.fromEntryMap(updated));
+    }
+
+    private static List<String> inferLikelyIngredients(SodaData data, net.minecraft.server.level.ServerLevel level) {
+        List<PotionBase> bases = collectPotionBases();
+        SodaNameRegistrySavedData names = SodaNameRegistrySavedData.get(level);
+        String targetKey = BrewersNotebookData.keyFor(data);
+
+        for (PotionBase base : bases) {
+            if (base.key().equals(targetKey)) {
+                return List.of("Carbonated Water", "Potion: " + base.label());
+            }
+        }
+
+        long seed = level.getSeed();
+        for (int i = 0; i < bases.size(); i++) {
+            PotionBase first = bases.get(i);
+            for (int j = i + 1; j < bases.size(); j++) {
+                PotionBase second = bases.get(j);
+                SodaData mixed = SodaEffectReducer.mix(
+                        first.data(),
+                        second.data(),
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        seed
+                );
+                if (!BrewersNotebookData.keyFor(mixed).equals(targetKey)) {
+                    continue;
+                }
+
+                String firstName = names.getName(first.key());
+                String secondName = names.getName(second.key());
+                String firstLabel = firstName == null || firstName.isBlank() ? first.label() : firstName;
+                String secondLabel = secondName == null || secondName.isBlank() ? second.label() : secondName;
+
+                return List.of(
+                        "Input Soda: " + firstLabel,
+                        "Input Soda/Potion: " + secondLabel
+                );
+            }
+        }
+
+        return List.of("Carbonated Water", "Potion/Soda reactants");
+    }
+
+    private static List<PotionBase> collectPotionBases() {
+        java.util.ArrayList<PotionBase> bases = new java.util.ArrayList<>();
+        for (Potion potion : BuiltInRegistries.POTION) {
+            net.minecraft.resources.ResourceLocation id = BuiltInRegistries.POTION.getKey(potion);
+            if (id == null || "empty".equals(id.getPath())) {
+                continue;
+            }
+
+            ItemStack potionItem = PotionContents.createItemStack(Items.POTION, BuiltInRegistries.POTION.wrapAsHolder(potion));
+            PotionContents contents = potionItem.get(DataComponents.POTION_CONTENTS);
+            if (contents == null || !contents.hasEffects()) {
+                continue;
+            }
+
+            java.util.ArrayList<MobEffectInstance> tierOne = new java.util.ArrayList<>();
+            for (MobEffectInstance effect : contents.getAllEffects()) {
+                if (effect.getAmplifier() == 0 && effect.getEffect().value().getCategory() == MobEffectCategory.BENEFICIAL) {
+                    tierOne.add(new MobEffectInstance(effect));
+                }
+            }
+
+            if (tierOne.isEmpty()) {
+                continue;
+            }
+
+            SodaData base = SodaEffectReducer.baseFromPotion(tierOne, contents.getColor());
+            bases.add(new PotionBase(id.getPath().replace('_', ' '), base, BrewersNotebookData.keyFor(base)));
+        }
+        return List.copyOf(bases);
+    }
+
+    private record PotionBase(String label, SodaData data, String key) {
+    }
+
+    public record LearnResult(boolean learned, String name) {
+        public static LearnResult none() {
+            return new LearnResult(false, "Unnamed Soda");
+        }
     }
 }
 

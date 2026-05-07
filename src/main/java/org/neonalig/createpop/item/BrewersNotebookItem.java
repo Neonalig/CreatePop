@@ -102,14 +102,14 @@ public class BrewersNotebookItem extends WrittenBookItem {
                 int end = Math.min(entries.size(), start + perContentsPage);
                 for (int index = start; index < end; index++) {
                     int recipePage = recipesStartPage + index;
-                    contents.append(linkLine("Recipe " + (index + 1), recipePage));
+                    contents.append(linkLine(entries.get(index).name(), recipePage));
                 }
                 pages.add(page(contents));
             }
 
             for (int index = 0; index < entries.size(); index++) {
                 BrewersNotebookData.Entry entry = entries.get(index);
-                MutableComponent recipe = Component.literal("Recipe " + (index + 1) + "\n\n")
+                MutableComponent recipe = Component.literal(entry.name() + "\n\n")
                         .append(Component.literal("Color: " + SodaTextHelper.formatColorHex(entry.data().color()) + "\n"))
                         .append(Component.translatable("createpop.soda.tooltip.instability", String.format(java.util.Locale.ROOT, "%.2f", entry.data().instability())))
                         .append(Component.literal("\n\nEffects:\n"));

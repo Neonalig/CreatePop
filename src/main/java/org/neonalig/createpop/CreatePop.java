@@ -18,6 +18,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.neonalig.createpop.client.ModClientEvents;
 import org.neonalig.createpop.command.SodaDebugCommand;
 import org.neonalig.createpop.event.ModCommonEvents;
+import org.neonalig.createpop.network.ModPayloads;
 import org.neonalig.createpop.registry.ModCapabilities;
 import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.registry.ModFluids;
@@ -55,6 +56,7 @@ public class CreatePop {
         modContainer.registerConfig(ModConfig.Type.CLIENT, CreatePopConfig.CLIENT_SPEC);
         modContainer.registerConfig(ModConfig.Type.COMMON, CreatePopConfig.COMMON_SPEC);
         modEventBus.addListener(ModCapabilities::registerCapabilities);
+        modEventBus.addListener(ModPayloads::register);
         ModCommonEvents.register();
         NeoForge.EVENT_BUS.addListener(SodaDebugCommand::register);
         if (FMLEnvironment.dist == Dist.CLIENT) {IConfigScreenFactory configScreenFactory = ConfigurationScreen::new;
