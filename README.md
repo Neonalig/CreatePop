@@ -1,6 +1,5 @@
 ﻿<div align="center">
-
-[//]: # (  <img src="Resources/logo.png" alt="Create: Pop Logo" width="128" />)
+  <img src="Resources/logo.png" alt="Create: Pop Logo" width="128" />
   <h1>Create: Pop</h1>
 </div>
 
