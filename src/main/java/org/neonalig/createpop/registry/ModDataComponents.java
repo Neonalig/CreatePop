@@ -6,6 +6,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.neonalig.createpop.CreatePop;
+import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.component.SodaData;
 
 public final class ModDataComponents {
@@ -14,6 +15,11 @@ public final class ModDataComponents {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<SodaData>> SODA_DATA = DATA_COMPONENTS.registerComponentType(
             "soda_data",
             builder -> builder.persistent(SodaData.CODEC).networkSynchronized(SodaData.STREAM_CODEC).cacheEncoding()
+    );
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<BrewersNotebookData>> BREWERS_NOTEBOOK_DATA = DATA_COMPONENTS.registerComponentType(
+            "brewers_notebook_data",
+            builder -> builder.persistent(BrewersNotebookData.CODEC).networkSynchronized(BrewersNotebookData.STREAM_CODEC).cacheEncoding()
     );
 
     private ModDataComponents() {

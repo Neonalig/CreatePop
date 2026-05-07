@@ -27,6 +27,9 @@ public class SodaBucketItem extends BucketItem {
     @Override
     public boolean emptyContents(@Nullable Player player, Level level, BlockPos pos, BlockHitResult hitResult, ItemStack container) {
         SodaData data = SodaFluidStackHelper.getSodaData(container);
+        if (!level.isClientSide && player != null) {
+            BrewingDiscoveryManager.learn(player, data);
+        }
         boolean placed = super.emptyContents(player, level, pos, hitResult, container);
         if (placed && !level.isClientSide && !data.equals(SodaData.EMPTY) && level instanceof ServerLevel serverLevel) {
             playDestabilizeEffects(serverLevel, pos);

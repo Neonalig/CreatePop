@@ -42,10 +42,12 @@ import com.simibubi.create.content.processing.recipe.HeatCondition;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.CreatePop;
+import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.component.SodaData;
 import org.neonalig.createpop.compat.create.DynamicSodaMixing;
 import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.registry.ModFluids;
+import org.neonalig.createpop.soda.BrewingDiscoveryManager;
 import org.neonalig.createpop.soda.SodaEffectReducer;
 import org.neonalig.createpop.soda.SodaFluidStackHelper;
 
@@ -55,6 +57,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * JEI plugin for CreatePop.
@@ -77,7 +81,8 @@ public class CreatePopJeiPlugin implements IModPlugin {
     private IJeiRuntime jeiRuntime;
     private final List<RecipeHolder<BasinRecipe>> injectedRecipes = new ArrayList<>();
     private final List<Object> runtimeHintSodaIngredients = new ArrayList<>();
-    private Boolean lastHintsEnabled;
+    private Boolean lastForceUnlockAll;
+    private String lastUnlockSnapshot;
 
     public CreatePopJeiPlugin() {
         NeoForge.EVENT_BUS.addListener(this::onClientLogin);
@@ -165,6 +170,8 @@ public class CreatePopJeiPlugin implements IModPlugin {
         clearRuntimeHintSodaIngredients();
         clearInjectedRecipes();
         this.jeiRuntime = null;
+        this.lastForceUnlockAll = null;
+        this.lastUnlockSnapshot = null;
     }
 
     /**
@@ -225,14 +232,26 @@ public class CreatePopJeiPlugin implements IModPlugin {
     private void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         clearRuntimeHintSodaIngredients();
         clearInjectedRecipes();
+        lastForceUnlockAll = null;
+        lastUnlockSnapshot = null;
     }
 
     private void onClientTick(ClientTickEvent.Post event) {
-        boolean hintsEnabled = isHintsEnabledSafe();
-        if (lastHintsEnabled != null && hintsEnabled == lastHintsEnabled) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null || minecraft.player.tickCount % 20 != 0) {
             return;
         }
-        lastHintsEnabled = hintsEnabled;
+
+        boolean forceUnlockAll = isForceUnlockAllSafe();
+        Set<String> unlockedKeys = forceUnlockAll ? Set.of() : resolveUnlockedRecipeKeys();
+        String unlockSnapshot = forceUnlockAll ? "__all__" : String.join(";", new TreeSet<>(unlockedKeys));
+
+        if (lastForceUnlockAll != null && forceUnlockAll == lastForceUnlockAll && unlockSnapshot.equals(lastUnlockSnapshot)) {
+            return;
+        }
+
+        lastForceUnlockAll = forceUnlockAll;
+        lastUnlockSnapshot = unlockSnapshot;
         refreshRuntimeHintSodaIngredients();
         refreshRuntimeRecipes();
     }
@@ -245,13 +264,10 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
         clearInjectedRecipes();
 
-        if (!isHintsEnabledSafe()) {
-            return;
-        }
-
         long worldSeed = resolveClientSeed();
         List<PotionBaseData> potionBases = collectPotionBases();
-        List<RecipeHolder<BasinRecipe>> recipes = buildReactionHintRecipes(potionBases, worldSeed);
+        Set<String> unlockedKeys = isForceUnlockAllSafe() ? null : resolveUnlockedRecipeKeys();
+        List<RecipeHolder<BasinRecipe>> recipes = buildReactionHintRecipes(potionBases, worldSeed, unlockedKeys);
 
         if (recipes.isEmpty()) {
             return;
@@ -262,11 +278,11 @@ public class CreatePopJeiPlugin implements IModPlugin {
         injectedRecipes.addAll(recipes);
     }
 
-    private static boolean isHintsEnabledSafe() {
+    private static boolean isForceUnlockAllSafe() {
         try {
-            return CreatePopConfig.enableJeiPotionHints();
+            return CreatePopConfig.forceUnlockAllJeiSodaRecipes();
         } catch (IllegalStateException ignored) {
-            // JEI/plugin setup can run before config load; defer toggling until config is ready.
+            // JEI/plugin setup can run before config load.
             return false;
         }
     }
@@ -280,12 +296,9 @@ public class CreatePopJeiPlugin implements IModPlugin {
         IPlatformFluidHelper<Object> helper = (IPlatformFluidHelper<Object>) platformFluidHelper;
         clearRuntimeHintSodaIngredients();
 
-        if (!isHintsEnabledSafe()) {
-            return;
-        }
-
         long seed = resolveClientSeed();
-        List<Object> extras = new ArrayList<>(buildHintSodaIngredients(helper, seed));
+        Set<String> unlockedKeys = isForceUnlockAllSafe() ? null : resolveUnlockedRecipeKeys();
+        List<Object> extras = new ArrayList<>(buildHintSodaIngredients(helper, seed, unlockedKeys));
         if (extras.isEmpty()) {
             return;
         }
@@ -305,7 +318,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
         runtimeHintSodaIngredients.clear();
     }
 
-    private static <T> List<T> buildHintSodaIngredients(IPlatformFluidHelper<T> helper, long worldSeed) {
+    private static <T> List<T> buildHintSodaIngredients(IPlatformFluidHelper<T> helper, long worldSeed, Set<String> unlockedKeys) {
         List<PotionBaseData> potionBases = collectPotionBases();
         Map<String, SodaData> unique = new LinkedHashMap<>();
 
@@ -318,6 +331,9 @@ public class CreatePopJeiPlugin implements IModPlugin {
                         DynamicSodaMixing.DRINK_AMOUNT,
                         worldSeed
                 );
+                if (unlockedKeys != null && !unlockedKeys.contains(BrewersNotebookData.keyFor(mixed))) {
+                    continue;
+                }
                 addSodaVariant(unique, mixed);
             }
         }
@@ -363,7 +379,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
         return recipes;
     }
 
-    private static List<RecipeHolder<BasinRecipe>> buildReactionHintRecipes(List<PotionBaseData> potionBases, long worldSeed) {
+    private static List<RecipeHolder<BasinRecipe>> buildReactionHintRecipes(List<PotionBaseData> potionBases, long worldSeed, Set<String> unlockedKeys) {
         List<RecipeHolder<BasinRecipe>> recipes = new ArrayList<>();
         for (int i = 0; i < potionBases.size(); i++) {
             PotionBaseData first = potionBases.get(i);
@@ -372,6 +388,9 @@ public class CreatePopJeiPlugin implements IModPlugin {
             for (int j = i + 1; j < potionBases.size(); j++) {
                 PotionBaseData second = potionBases.get(j);
                 SodaData outputData = SodaEffectReducer.mix(first.sodaData(), second.sodaData(), DynamicSodaMixing.DRINK_AMOUNT, DynamicSodaMixing.DRINK_AMOUNT, worldSeed);
+                if (unlockedKeys != null && !unlockedKeys.contains(BrewersNotebookData.keyFor(outputData))) {
+                    continue;
+                }
                 FluidStack output = sodaForJei(outputData);
 
                 // Show as: soda(A) + potion_item(B) → soda(A+B).
@@ -386,6 +405,14 @@ public class CreatePopJeiPlugin implements IModPlugin {
             }
         }
         return recipes;
+    }
+
+    private static Set<String> resolveUnlockedRecipeKeys() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return Set.of();
+        }
+        return BrewingDiscoveryManager.knownRecipeKeys(minecraft.player);
     }
 
     private static List<PotionBaseData> collectPotionBases() {

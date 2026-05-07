@@ -5,9 +5,9 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class CreatePopConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
-    public static final ModConfigSpec.BooleanValue ENABLE_JEI_POTION_HINTS = BUILDER
-            .comment("Enable JEI potion reaction hint recipes (Requires JEI).")
-            .define("enableJeiPotionHints", true);
+    public static final ModConfigSpec.BooleanValue FORCE_UNLOCK_ALL_JEI_SODA_RECIPES = BUILDER
+            .comment("Force unlock all JEI soda reaction hint recipes (cheat/debug option, Requires JEI).")
+            .define("forceUnlockAllJeiSodaRecipes", false);
 
     public static final ModConfigSpec CLIENT_SPEC = BUILDER.build();
 
@@ -34,8 +34,8 @@ public final class CreatePopConfig {
     private CreatePopConfig() {
     }
 
-    public static boolean enableJeiPotionHints() {
-        return ENABLE_JEI_POTION_HINTS.get();
+    public static boolean forceUnlockAllJeiSodaRecipes() {
+        return FORCE_UNLOCK_ALL_JEI_SODA_RECIPES.get();
     }
 
     public static double acaciaLogInstabilityReduction() {

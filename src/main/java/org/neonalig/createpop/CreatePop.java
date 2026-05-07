@@ -17,9 +17,11 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.neonalig.createpop.client.ModClientEvents;
 import org.neonalig.createpop.command.SodaDebugCommand;
+import org.neonalig.createpop.event.ModCommonEvents;
 import org.neonalig.createpop.registry.ModCapabilities;
 import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.registry.ModFluids;
+import org.neonalig.createpop.registry.ModItems;
 
 @Mod(CreatePop.MODID)
 public class CreatePop {
@@ -34,6 +36,8 @@ public class CreatePop {
             .withTabsBefore(CreativeModeTabs.FOOD_AND_DRINKS)
             .icon(() -> ModFluids.SODA_BUCKET.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
+                output.accept(ModItems.BREWERS_GUIDE.get());
+                output.accept(ModItems.BREWERS_NOTEBOOK.get());
                 output.accept(ModFluids.CARBONATED_WATER_BUCKET.get());
                 output.accept(ModFluids.CARBONATED_WATER_BOTTLE.get());
                 output.accept(ModFluids.SODA_BUCKET.get());
@@ -42,6 +46,7 @@ public class CreatePop {
             .build());
 
     public CreatePop(IEventBus modEventBus, ModContainer modContainer) {
+        ModItems.init();
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
@@ -50,6 +55,7 @@ public class CreatePop {
         modContainer.registerConfig(ModConfig.Type.CLIENT, CreatePopConfig.CLIENT_SPEC);
         modContainer.registerConfig(ModConfig.Type.COMMON, CreatePopConfig.COMMON_SPEC);
         modEventBus.addListener(ModCapabilities::registerCapabilities);
+        ModCommonEvents.register();
         NeoForge.EVENT_BUS.addListener(SodaDebugCommand::register);
         if (FMLEnvironment.dist == Dist.CLIENT) {IConfigScreenFactory configScreenFactory = ConfigurationScreen::new;
             modContainer.registerExtensionPoint(IConfigScreenFactory.class, configScreenFactory);
