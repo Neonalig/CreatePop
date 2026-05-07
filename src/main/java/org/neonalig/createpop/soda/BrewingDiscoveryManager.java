@@ -21,6 +21,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.advancement.CreatePopAdvancementGrants;
 import org.neonalig.createpop.advancement.ModTriggers;
 import org.neonalig.createpop.network.OpenSodaNamePromptPayload;
@@ -231,6 +232,52 @@ public final class BrewingDiscoveryManager {
 
     public static Set<String> knownRecipeKeys(Player player) {
         return playerData(player).asMap().keySet();
+    }
+
+    public static int unlockAllJeiHintRecipes(ServerPlayer player) {
+        BrewersNotebookData known = playerData(player);
+        Map<String, BrewersNotebookData.Entry> updated = new LinkedHashMap<>(known.entryMap());
+
+        List<PotionBase> bases = collectPotionBases();
+        long seed = player.serverLevel().getSeed();
+
+        for (int i = 0; i < bases.size(); i++) {
+            PotionBase first = bases.get(i);
+            for (int j = i + 1; j < bases.size(); j++) {
+                PotionBase second = bases.get(j);
+                SodaData mixed = SodaEffectReducer.mix(
+                        first.data(),
+                        second.data(),
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        seed
+                );
+                String key = BrewersNotebookData.keyFor(mixed);
+                if (updated.containsKey(key)) {
+                    continue;
+                }
+
+                String name = "Hint: " + first.label() + " + " + second.label();
+                List<String> ingredients = List.of(
+                        "Input Soda: " + first.label(),
+                        "Input Soda/Potion: " + second.label()
+                );
+                updated.put(key, new BrewersNotebookData.Entry(key, mixed, name, ingredients));
+            }
+        }
+
+        int added = updated.size() - known.size();
+        if (added > 0) {
+            setPlayerData(player, BrewersNotebookData.fromEntryMap(updated));
+        }
+        return added;
+    }
+
+    public static void autoUnlockJeiHintsIfEnabled(ServerPlayer player) {
+        if (!CreatePopConfig.autoUnlockAllJeiHints()) {
+            return;
+        }
+        unlockAllJeiHintRecipes(player);
     }
 
     public static BrewersNotebookData.Entry knownEntry(Player player, SodaData data) {

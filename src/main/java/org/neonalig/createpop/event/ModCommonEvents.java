@@ -40,6 +40,8 @@ public final class ModCommonEvents {
             return;
         }
 
+        BrewingDiscoveryManager.autoUnlockJeiHintsIfEnabled(serverPlayer);
+
         for (ItemStack stack : serverPlayer.getInventory().items) {
             BrewingDiscoveryManager.learnFromStack(serverPlayer, stack);
         }

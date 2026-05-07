@@ -3,16 +3,15 @@ package org.neonalig.createpop;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class CreatePopConfig {
-    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final ModConfigSpec.Builder COMMON_BUILDER = new ModConfigSpec.Builder();
 
-    public static final ModConfigSpec.BooleanValue FORCE_UNLOCK_ALL_JEI_SODA_RECIPES = BUILDER
-            .comment("Force unlock all JEI soda reaction hint recipes (cheat/debug option, Requires JEI).")
+    public static final ModConfigSpec.BooleanValue FORCE_UNLOCK_ALL_JEI_SODA_RECIPES = COMMON_BUILDER
+            .comment("Force unlock all JEI soda reaction hint recipes for every player (server-controlled debug option, Requires JEI).")
             .define("forceUnlockAllJeiSodaRecipes", false);
 
-    public static final ModConfigSpec CLIENT_SPEC = BUILDER.build();
-
-    // --- Common (synced) config ---
-    private static final ModConfigSpec.Builder COMMON_BUILDER = new ModConfigSpec.Builder();
+    public static final ModConfigSpec.BooleanValue AUTO_UNLOCK_ALL_JEI_HINTS = COMMON_BUILDER
+            .comment("Automatically unlock all JEI soda hint recipes for joining players (server-controlled).")
+            .define("autoUnlockAllJeiHints", false);
 
     public static final ModConfigSpec.DoubleValue ACACIA_LOG_INSTABILITY_REDUCTION = COMMON_BUILDER
             .comment("Absolute instability removed when mixing soda with a stripped acacia log in a heated mixer.",
@@ -70,6 +69,10 @@ public final class CreatePopConfig {
 
     public static boolean forceUnlockAllJeiSodaRecipes() {
         return FORCE_UNLOCK_ALL_JEI_SODA_RECIPES.get();
+    }
+
+    public static boolean autoUnlockAllJeiHints() {
+        return AUTO_UNLOCK_ALL_JEI_HINTS.get();
     }
 
     public static double acaciaLogInstabilityReduction() {
