@@ -1,14 +1,14 @@
 {
-  "parent": "createpop:blank_page_problem",
+  "parent": "createpop:notebook_obtained",
   "display": {
     "icon": {
       "id": "createpop:brewers_notebook"
     },
     "title": {
-      "translate": "advancement.createpop.marketing_department.title"
+      "translate": "advancement.createpop.soda_named.title"
     },
     "description": {
-      "translate": "advancement.createpop.marketing_department.description"
+      "translate": "advancement.createpop.soda_named.description"
     },
     "frame": "goal",
     "show_toast": true,

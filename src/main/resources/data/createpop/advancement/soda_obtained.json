@@ -1,14 +1,14 @@
 {
-  "parent": "createpop:proof_of_concept",
+  "parent": "createpop:root",
   "display": {
     "icon": {
       "id": "createpop:soda_bottle"
     },
     "title": {
-      "translate": "advancement.createpop.science_part.title"
+      "translate": "advancement.createpop.soda_obtained.title"
     },
     "description": {
-      "translate": "advancement.createpop.science_part.description"
+      "translate": "advancement.createpop.soda_obtained.description"
     },
     "frame": "task",
     "show_toast": true,
@@ -16,8 +16,8 @@
     "hidden": false
   },
   "criteria": {
-    "drink_soda": {
-      "trigger": "createpop:drank_soda"
+    "obtain_soda": {
+      "trigger": "createpop:obtained_soda"
     }
   }
 }

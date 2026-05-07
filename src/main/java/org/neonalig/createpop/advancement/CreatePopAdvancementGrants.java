@@ -33,20 +33,20 @@ public final class CreatePopAdvancementGrants {
     private static final Set<UUID> FIRST_DUMPED_PLAYER_STATE = ConcurrentHashMap.newKeySet();
 
     private static final ResourceLocation ROOT = id("root");
-    private static final ResourceLocation REQUIRED_READING = id("required_reading");
-    private static final ResourceLocation BLANK_PAGE_PROBLEM = id("blank_page_problem");
-    private static final ResourceLocation MARKETING_DEPARTMENT = id("marketing_department");
-    private static final ResourceLocation BLOOP = id("bloop");
-    private static final ResourceLocation BASIC_HYDRATION = id("basic_hydration");
-    private static final ResourceLocation PROOF_OF_CONCEPT = id("proof_of_concept");
-    private static final ResourceLocation SCIENCE_PART = id("science_part");
-    private static final ResourceLocation GRAND_OPENING = id("grand_opening");
-    private static final ResourceLocation OVERCROWDED = id("overcrowded");
-    private static final ResourceLocation OOPSIE_FIZZIE = id("oopsie_fizzie");
-    private static final ResourceLocation ZERO_DEFECTS = id("zero_defects");
-    private static final ResourceLocation GUM_ARABIC = id("gum_arabic");
-    private static final ResourceLocation THE_EMULSIFIER = id("the_emulsifier");
-    private static final ResourceLocation VITRIFICATION_PROTOCOL = id("vitrification_protocol");
+    private static final ResourceLocation GUIDE_OBTAINED = id("guide_obtained");
+    private static final ResourceLocation NOTEBOOK_OBTAINED = id("notebook_obtained");
+    private static final ResourceLocation SODA_NAMED = id("soda_named");
+    private static final ResourceLocation CARBONATED_WATER_OBTAINED = id("carbonated_water_obtained");
+    private static final ResourceLocation CARBONATED_WATER_CONSUMED = id("carbonated_water_consumed");
+    private static final ResourceLocation SODA_OBTAINED = id("soda_obtained");
+    private static final ResourceLocation SODA_CONSUMED = id("soda_consumed");
+    private static final ResourceLocation SODA_POURED = id("soda_poured");
+    private static final ResourceLocation COMPOUND_SODA_OBTAINED = id("compound_soda_obtained");
+    private static final ResourceLocation NEGATIVE_SODA_OBTAINED = id("negative_soda_obtained");
+    private static final ResourceLocation PERFECT_SODA_OBTAINED = id("perfect_soda_obtained");
+    private static final ResourceLocation STABILISED_WITH_ACACIA = id("stabilised_with_acacia");
+    private static final ResourceLocation STABILISED_WITH_MAGMA_CREAM = id("stabilised_with_magma_cream");
+    private static final ResourceLocation STABILISED_WITH_AMETHYST = id("stabilised_with_amethyst");
 
     private CreatePopAdvancementGrants() {
     }
@@ -75,79 +75,79 @@ public final class CreatePopAdvancementGrants {
         }
 
         if (hasGuide) {
-            award(player, REQUIRED_READING);
+            award(player, GUIDE_OBTAINED);
         }
         if (hasNotebook) {
-            award(player, REQUIRED_READING);
-            award(player, BLANK_PAGE_PROBLEM);
+            award(player, GUIDE_OBTAINED);
+            award(player, NOTEBOOK_OBTAINED);
         }
         if (hasCarb) {
-            award(player, BLOOP);
+            award(player, CARBONATED_WATER_OBTAINED);
         }
         if (hasSoda) {
-            award(player, PROOF_OF_CONCEPT);
+            award(player, SODA_OBTAINED);
         }
     }
 
     public static void grantBasicHydration(ServerPlayer player) {
         grantRoot(player);
-        award(player, BLOOP);
-        award(player, BASIC_HYDRATION);
+        award(player, CARBONATED_WATER_OBTAINED);
+        award(player, CARBONATED_WATER_CONSUMED);
     }
 
     public static void grantObtainedSoda(ServerPlayer player) {
         grantRoot(player);
-        award(player, PROOF_OF_CONCEPT);
+        award(player, SODA_OBTAINED);
     }
 
     public static void grantDrankSoda(ServerPlayer player) {
         LOGGER.debug("[CreatePopAdv] drank soda event for {}", player.getGameProfile().getName());
         grantObtainedSoda(player);
-        award(player, SCIENCE_PART);
+        award(player, SODA_CONSUMED);
     }
 
     public static void grantPouredSodaBucket(ServerPlayer player) {
         LOGGER.debug("[CreatePopAdv] poured soda bucket event for {}", player.getGameProfile().getName());
         grantObtainedSoda(player);
-        award(player, GRAND_OPENING);
+        award(player, SODA_POURED);
     }
 
     public static void grantNamedSoda(ServerPlayer player) {
         LOGGER.debug("[CreatePopAdv] named soda event for {}", player.getGameProfile().getName());
         grantRoot(player);
-        award(player, REQUIRED_READING);
-        award(player, BLANK_PAGE_PROBLEM);
-        award(player, MARKETING_DEPARTMENT);
+        award(player, GUIDE_OBTAINED);
+        award(player, NOTEBOOK_OBTAINED);
+        award(player, SODA_NAMED);
     }
 
     public static void grantCompoundSoda(ServerPlayer player) {
         grantObtainedSoda(player);
-        award(player, OVERCROWDED);
+        award(player, COMPOUND_SODA_OBTAINED);
     }
 
     public static void grantNegativeSoda(ServerPlayer player) {
         grantObtainedSoda(player);
-        award(player, OOPSIE_FIZZIE);
+        award(player, NEGATIVE_SODA_OBTAINED);
     }
 
     public static void grantPerfectSoda(ServerPlayer player) {
         grantObtainedSoda(player);
-        award(player, ZERO_DEFECTS);
+        award(player, PERFECT_SODA_OBTAINED);
     }
 
     public static void grantStabilisedWithAcacia(ServerPlayer player) {
         grantObtainedSoda(player);
-        award(player, GUM_ARABIC);
+        award(player, STABILISED_WITH_ACACIA);
     }
 
     public static void grantStabilisedWithMagmaCream(ServerPlayer player) {
         grantObtainedSoda(player);
-        award(player, THE_EMULSIFIER);
+        award(player, STABILISED_WITH_MAGMA_CREAM);
     }
 
     public static void grantStabilisedWithAmethyst(ServerPlayer player) {
         grantPerfectSoda(player);
-        award(player, VITRIFICATION_PROTOCOL);
+        award(player, STABILISED_WITH_AMETHYST);
     }
 
     private static ResourceLocation id(String path) {
@@ -226,20 +226,20 @@ public final class CreatePopAdvancementGrants {
         LOGGER.info("[CreatePopAdv] ----- advancement state dump for {} -----", player.getGameProfile().getName());
         List<ResourceLocation> ids = List.of(
                 ROOT,
-                REQUIRED_READING,
-                BLANK_PAGE_PROBLEM,
-                MARKETING_DEPARTMENT,
-                BLOOP,
-                BASIC_HYDRATION,
-                PROOF_OF_CONCEPT,
-                SCIENCE_PART,
-                GRAND_OPENING,
-                OVERCROWDED,
-                OOPSIE_FIZZIE,
-                ZERO_DEFECTS,
-                GUM_ARABIC,
-                THE_EMULSIFIER,
-                VITRIFICATION_PROTOCOL
+                GUIDE_OBTAINED,
+                NOTEBOOK_OBTAINED,
+                SODA_NAMED,
+                CARBONATED_WATER_OBTAINED,
+                CARBONATED_WATER_CONSUMED,
+                SODA_OBTAINED,
+                SODA_CONSUMED,
+                SODA_POURED,
+                COMPOUND_SODA_OBTAINED,
+                NEGATIVE_SODA_OBTAINED,
+                PERFECT_SODA_OBTAINED,
+                STABILISED_WITH_ACACIA,
+                STABILISED_WITH_MAGMA_CREAM,
+                STABILISED_WITH_AMETHYST
         );
 
         for (ResourceLocation id : ids) {

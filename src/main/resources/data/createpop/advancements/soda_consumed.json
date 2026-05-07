@@ -1,14 +1,14 @@
 {
-  "parent": "createpop:root",
+  "parent": "createpop:soda_obtained",
   "display": {
     "icon": {
       "id": "createpop:soda_bottle"
     },
     "title": {
-      "translate": "advancement.createpop.proof_of_concept.title"
+      "translate": "advancement.createpop.soda_consumed.title"
     },
     "description": {
-      "translate": "advancement.createpop.proof_of_concept.description"
+      "translate": "advancement.createpop.soda_consumed.description"
     },
     "frame": "task",
     "show_toast": true,
@@ -16,8 +16,8 @@
     "hidden": false
   },
   "criteria": {
-    "obtain_soda": {
-      "trigger": "createpop:obtained_soda"
+    "drink_soda": {
+      "trigger": "createpop:drank_soda"
     }
   }
 }

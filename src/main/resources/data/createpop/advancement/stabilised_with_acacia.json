@@ -1,14 +1,14 @@
 {
-  "parent": "createpop:proof_of_concept",
+  "parent": "createpop:soda_obtained",
   "display": {
     "icon": {
       "id": "minecraft:stripped_acacia_log"
     },
     "title": {
-      "translate": "advancement.createpop.gum_arabic.title"
+      "translate": "advancement.createpop.stabilised_with_acacia.title"
     },
     "description": {
-      "translate": "advancement.createpop.gum_arabic.description"
+      "translate": "advancement.createpop.stabilised_with_acacia.description"
     },
     "frame": "task",
     "show_toast": true,

@@ -1,14 +1,14 @@
 {
-  "parent": "createpop:zero_defects",
+  "parent": "createpop:perfect_soda_obtained",
   "display": {
     "icon": {
       "id": "minecraft:amethyst_shard"
     },
     "title": {
-      "translate": "advancement.createpop.vitrification_protocol.title"
+      "translate": "advancement.createpop.stabilised_with_amethyst.title"
     },
     "description": {
-      "translate": "advancement.createpop.vitrification_protocol.description"
+      "translate": "advancement.createpop.stabilised_with_amethyst.description"
     },
     "frame": "challenge",
     "show_toast": true,

@@ -2,13 +2,13 @@
   "parent": "createpop:root",
   "display": {
     "icon": {
-      "id": "createpop:brewers_guide"
+      "id": "createpop:carbonated_water_bottle"
     },
     "title": {
-      "translate": "advancement.createpop.required_reading.title"
+      "translate": "advancement.createpop.carbonated_water_obtained.title"
     },
     "description": {
-      "translate": "advancement.createpop.required_reading.description"
+      "translate": "advancement.createpop.carbonated_water_obtained.description"
     },
     "frame": "task",
     "show_toast": true,
@@ -16,13 +16,14 @@
     "hidden": false
   },
   "criteria": {
-    "get_guide": {
+    "get_carb_water": {
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
           {
             "items": [
-              "createpop:brewers_guide"
+              "createpop:carbonated_water_bottle",
+              "createpop:carbonated_water_bucket"
             ]
           }
         ]

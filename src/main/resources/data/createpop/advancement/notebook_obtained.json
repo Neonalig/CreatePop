@@ -1,14 +1,14 @@
 {
-  "parent": "createpop:required_reading",
+  "parent": "createpop:guide_obtained",
   "display": {
     "icon": {
       "id": "createpop:brewers_notebook"
     },
     "title": {
-      "translate": "advancement.createpop.blank_page_problem.title"
+      "translate": "advancement.createpop.notebook_obtained.title"
     },
     "description": {
-      "translate": "advancement.createpop.blank_page_problem.description"
+      "translate": "advancement.createpop.notebook_obtained.description"
     },
     "frame": "task",
     "show_toast": true,
