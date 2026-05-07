@@ -8,6 +8,7 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.alchemy.PotionContents;
 import org.neonalig.createpop.component.SodaData;
 
 import java.nio.charset.StandardCharsets;
@@ -48,7 +49,48 @@ public final class SodaEffectReducer {
             MobEffects.WEAKNESS,
             MobEffects.CONFUSION,
             MobEffects.POISON,
-            MobEffects.DIG_SLOWDOWN
+            MobEffects.DIG_SLOWDOWN,
+            MobEffects.HARM,
+            MobEffects.WITHER,
+            MobEffects.HUNGER,
+            MobEffects.BLINDNESS,
+            MobEffects.UNLUCK,
+            MobEffects.DARKNESS
+    );
+
+    private static final List<Holder<MobEffect>> POSITIVE_PURIFICATION_POOL = List.of(
+            MobEffects.MOVEMENT_SPEED,
+            MobEffects.DIG_SPEED,
+            MobEffects.DAMAGE_BOOST,
+            MobEffects.JUMP,
+            MobEffects.REGENERATION,
+            MobEffects.HEAL,
+            MobEffects.SATURATION,
+            MobEffects.NIGHT_VISION,
+            MobEffects.LUCK,
+            MobEffects.DAMAGE_RESISTANCE,
+            MobEffects.ABSORPTION,
+            MobEffects.SLOW_FALLING,
+            MobEffects.WATER_BREATHING,
+            MobEffects.FIRE_RESISTANCE,
+            MobEffects.CONDUIT_POWER,
+            MobEffects.DOLPHINS_GRACE,
+            MobEffects.HEALTH_BOOST,
+            MobEffects.INVISIBILITY
+    );
+
+    private static final Map<Holder<MobEffect>, Holder<MobEffect>> NEGATIVE_TO_POSITIVE = Map.ofEntries(
+            Map.entry(MobEffects.MOVEMENT_SLOWDOWN, MobEffects.MOVEMENT_SPEED),
+            Map.entry(MobEffects.DIG_SLOWDOWN, MobEffects.DIG_SPEED),
+            Map.entry(MobEffects.WEAKNESS, MobEffects.DAMAGE_BOOST),
+            Map.entry(MobEffects.HARM, MobEffects.HEAL),
+            Map.entry(MobEffects.POISON, MobEffects.REGENERATION),
+            Map.entry(MobEffects.WITHER, MobEffects.REGENERATION),
+            Map.entry(MobEffects.HUNGER, MobEffects.SATURATION),
+            Map.entry(MobEffects.CONFUSION, MobEffects.DAMAGE_RESISTANCE),
+            Map.entry(MobEffects.BLINDNESS, MobEffects.NIGHT_VISION),
+            Map.entry(MobEffects.DARKNESS, MobEffects.NIGHT_VISION),
+            Map.entry(MobEffects.UNLUCK, MobEffects.LUCK)
     );
 
     private SodaEffectReducer() {
@@ -56,6 +98,31 @@ public final class SodaEffectReducer {
 
     public static SodaData baseFromPotion(List<MobEffectInstance> effects, int color) {
         return new SodaData(copyEffects(effects), color, BASE_INSTABILITY);
+    }
+
+    public static List<MobEffectInstance> acceptedPotionEffects(PotionContents potion) {
+        List<MobEffectInstance> acceptedEffects = new ArrayList<>();
+        for (MobEffectInstance effect : potion.getAllEffects()) {
+            acceptedEffects.add(new MobEffectInstance(
+                    effect.getEffect(),
+                    effect.getDuration(),
+                    effect.getAmplifier(),
+                    effect.isAmbient(),
+                    effect.isVisible(),
+                    effect.showIcon()
+            ));
+        }
+        return acceptedEffects;
+    }
+
+    public static SodaData purifyWithAmethyst(SodaData data) {
+        List<MobEffectInstance> purified = new ArrayList<>();
+        for (MobEffectInstance effect : data.effects()) {
+            purified.add(purifyNegativeEffect(effect));
+        }
+        purified = coalesce(purified);
+        purified.sort(Comparator.comparing(SodaEffectReducer::effectId));
+        return new SodaData(purified, data.color(), 0.0f);
     }
 
     public static SodaData mix(SodaData first, SodaData second, long worldSeed) {
@@ -103,13 +170,10 @@ public final class SodaEffectReducer {
 
             for (int i = 0; i < effects.size() && !changed; i++) {
                 MobEffectInstance first = effects.get(i);
-                if (!isPositive(first)) {
-                    continue;
-                }
 
                 for (int j = i + 1; j < effects.size(); j++) {
                     MobEffectInstance second = effects.get(j);
-                    if (!isPositive(second) || effectId(first).equals(effectId(second))) {
+                    if (effectId(first).equals(effectId(second))) {
                         continue;
                     }
 
@@ -238,7 +302,10 @@ public final class SodaEffectReducer {
     private static List<Holder<MobEffect>> validOutcomes(MobEffectInstance first, MobEffectInstance second) {
         String firstId = effectId(first);
         String secondId = effectId(second);
-        return HIGHER_TIER_POOL.stream()
+        List<Holder<MobEffect>> pool = new ArrayList<>(HIGHER_TIER_POOL);
+        pool.addAll(NEGATIVE_POOL);
+        pool.addAll(POSITIVE_PURIFICATION_POOL);
+        return pool.stream()
                 .filter(holder -> {
                     ResourceLocation id = BuiltInRegistries.MOB_EFFECT.getKey(holder.value());
                     if (id == null) {
@@ -299,6 +366,28 @@ public final class SodaEffectReducer {
         RandomSource random = RandomSource.create(hash);
         Holder<MobEffect> effect = NEGATIVE_POOL.get(random.nextInt(NEGATIVE_POOL.size()));
         return new MobEffectInstance(effect, DEFAULT_DURATION / 2, random.nextInt(2));
+    }
+
+    private static MobEffectInstance purifyNegativeEffect(MobEffectInstance effect) {
+        if (effect.getEffect().value().getCategory() != MobEffectCategory.HARMFUL) {
+            return new MobEffectInstance(effect);
+        }
+
+        Holder<MobEffect> mapped = NEGATIVE_TO_POSITIVE.get(effect.getEffect());
+        if (mapped == null) {
+            String id = effectId(effect);
+            int index = Math.floorMod(id.hashCode(), POSITIVE_PURIFICATION_POOL.size());
+            mapped = POSITIVE_PURIFICATION_POOL.get(index);
+        }
+
+        return new MobEffectInstance(
+                mapped,
+                effect.getDuration(),
+                effect.getAmplifier(),
+                effect.isAmbient(),
+                effect.isVisible(),
+                effect.showIcon()
+        );
     }
 
     private static long hashPair(MobEffectInstance first, MobEffectInstance second, long worldSeed) {

@@ -9,6 +9,8 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
 import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.compat.create.DynamicSodaMixing;
 import org.neonalig.createpop.registry.ModItems;
@@ -29,7 +31,7 @@ public class BrewersGuideScreen extends Screen {
     private static final int SOFT_SHADOW = 0x66000000;
     private static final int TITLE_SHADOW = 0xCC000000;
     private static final int LINK = 0xFF7F542F;
-    private static final int LINK_HOVER = 0xFFF4E7C0;
+    private static final int LINK_HOVER = 0xFF4B2F1B;
     private static final int SELECTION = 0xC46B8E23;
     private static final int HOVER = 0x6A8A5A30;
     private static final int ENTRY_HEIGHT = 22;
@@ -479,7 +481,7 @@ public class BrewersGuideScreen extends Screen {
         String portion = DynamicSodaMixing.DRINK_AMOUNT + " mB";
         ItemStack notebook = new ItemStack(ModItems.BREWERS_NOTEBOOK.get());
         ItemStack diamond = new ItemStack(Items.DIAMOND);
-        ItemStack potion = new ItemStack(Items.POTION);
+        ItemStack potion = PotionContents.createItemStack(Items.POTION, Potions.POISON);
         ItemStack dye = new ItemStack(Items.RED_DYE);
         ItemStack acacia = new ItemStack(Items.STRIPPED_ACACIA_LOG);
         ItemStack magmaCream = new ItemStack(Items.MAGMA_CREAM);
@@ -521,7 +523,7 @@ public class BrewersGuideScreen extends Screen {
                         List.of(
                                 paragraph(
                                         text("createpop.brewers_guide.section.first_soda.line1.prefix", INK),
-                                        itemUseLink(potion, potion.getHoverName()),
+                                        itemUseLink(potion, tr("createpop.brewers_guide.links.potion")),
                                         text("createpop.brewers_guide.section.first_soda.line1.suffix", INK)
                                 ),
                                 paragraph(text("createpop.brewers_guide.section.first_soda.line2", INK)),

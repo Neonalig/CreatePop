@@ -8,7 +8,6 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.Item;
@@ -197,7 +196,7 @@ public final class DynamicSodaMixing {
                 if (item.is(Items.AMETHYST_SHARD)) {
                     float reduction = (float) CreatePopConfig.amethystShardInstabilityReduction();
                     if (reduction <= 0f) continue;
-                    SodaData stabilised = new SodaData(input.data().effects(), input.data().color(), input.data().instability() * (1f - reduction));
+                    SodaData stabilised = SodaEffectReducer.purifyWithAmethyst(input.data());
                     FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, stabilised);
                     return Optional.of(recipe("stabilise_full", output,
                             List.of(exactFluid(input.stack(), DRINK_AMOUNT)),
@@ -294,13 +293,12 @@ public final class DynamicSodaMixing {
             return Optional.empty();
         }
 
-        List<MobEffectInstance> tierOneEffects = tierOneBeneficialEffects(potion);
-
-        if (tierOneEffects.isEmpty()) {
+        List<MobEffectInstance> baseEffects = SodaEffectReducer.acceptedPotionEffects(potion);
+        if (baseEffects.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(SodaEffectReducer.baseFromPotion(tierOneEffects, potion.getColor()));
+        return Optional.of(SodaEffectReducer.baseFromPotion(baseEffects, potion.getColor()));
     }
 
 
@@ -317,32 +315,12 @@ public final class DynamicSodaMixing {
             return Optional.empty();
         }
 
-        // Create potion fluid durations are already in ticks — no normalization needed.
-        List<MobEffectInstance> tierOneEffects = tierOneBeneficialEffects(potion);
-
-        if (tierOneEffects.isEmpty()) {
+        List<MobEffectInstance> baseEffects = SodaEffectReducer.acceptedPotionEffects(potion);
+        if (baseEffects.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(new SodaInput(stack, SodaData.ofPotion(tierOneEffects, potion.getColor()), false, false, true));
-    }
-
-    private static List<MobEffectInstance> tierOneBeneficialEffects(PotionContents potion) {
-        List<MobEffectInstance> tierOneEffects = new ArrayList<>();
-        for (MobEffectInstance effect : potion.getAllEffects()) {
-            if (effect.getAmplifier() != 0 || effect.getEffect().value().getCategory() != MobEffectCategory.BENEFICIAL) {
-                continue;
-            }
-            tierOneEffects.add(new MobEffectInstance(
-                    effect.getEffect(),
-                    effect.getDuration(),
-                    effect.getAmplifier(),
-                    effect.isAmbient(),
-                    effect.isVisible(),
-                    effect.showIcon()
-            ));
-        }
-        return tierOneEffects;
+        return Optional.of(new SodaInput(stack, SodaData.ofPotion(baseEffects, potion.getColor()), false, false, true));
     }
 
     private record SodaInput(FluidStack stack, SodaData data, boolean carbonatedWater, boolean soda, boolean potion) {

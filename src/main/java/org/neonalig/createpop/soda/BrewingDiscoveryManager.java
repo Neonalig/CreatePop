@@ -5,7 +5,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -414,18 +413,12 @@ public final class BrewingDiscoveryManager {
                 continue;
             }
 
-            java.util.ArrayList<MobEffectInstance> tierOne = new java.util.ArrayList<>();
-            for (MobEffectInstance effect : contents.getAllEffects()) {
-                if (effect.getAmplifier() == 0 && effect.getEffect().value().getCategory() == MobEffectCategory.BENEFICIAL) {
-                    tierOne.add(new MobEffectInstance(effect));
-                }
-            }
-
-            if (tierOne.isEmpty()) {
+            java.util.List<MobEffectInstance> baseEffects = SodaEffectReducer.acceptedPotionEffects(contents);
+            if (baseEffects.isEmpty()) {
                 continue;
             }
 
-            SodaData base = SodaEffectReducer.baseFromPotion(tierOne, contents.getColor());
+            SodaData base = SodaEffectReducer.baseFromPotion(baseEffects, contents.getColor());
             bases.add(new PotionBase(id.getPath().replace('_', ' '), base, BrewersNotebookData.keyFor(base)));
         }
         return List.copyOf(bases);

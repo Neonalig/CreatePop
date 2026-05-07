@@ -85,5 +85,10 @@ public class SodaBottleItem extends Item {
         super.appendHoverText(stack, context, tooltip, flag);
         SodaTextHelper.appendSodaTooltip(tooltip, SodaFluidStackHelper.getSodaData(stack));
     }
+
+    @Override
+    public boolean isFoil(ItemStack stack) {
+        return SodaFluidStackHelper.getSodaData(stack).instability() <= 0.0001f || super.isFoil(stack);
+    }
 }
 

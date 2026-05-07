@@ -9,7 +9,7 @@
   "fluid_type.createpop.soda": "Pop",
   "createpop.brewers_guide.section.overview.line1": "Create: Pop revolves around turning plain water into carbonated water, then combining that base with potions, sodas, dyes, or stabilisers in a Create mixer.",
   "createpop.brewers_guide.section.first_soda.line3.prefix": "Once you have a base soda, you can remix it with other sodas, recolour it with ",
-  "createpop.brewers_guide.section.first_soda.line3.suffix": ", or stabilise it if the recipe starts getting unruly.",
+  "createpop.brewers_guide.section.first_soda.line3.suffix": ", or stabilise it if the recipe starts getting unruly. A tier-1 negative plus a tier-2 negative might still cascade into several positive results if the reaction breaks your way.",
   "createpop.brewers_guide.section.rules.line2.suffix": " lets you recolour an existing soda without changing its core effects, which is useful for theming batches or marking stronger blends.",
   "createpop.brewers_guide.section.instability.line3": "A little instability can be manageable, but if you are chasing polished recipes, stabilise between major remix steps instead of waiting until the very end."
 }

@@ -25,6 +25,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
@@ -462,18 +463,12 @@ public class CreatePopJeiPlugin implements IModPlugin {
                 continue;
             }
 
-            List<MobEffectInstance> tierOneBeneficial = new ArrayList<>();
-            for (MobEffectInstance effect : contents.getAllEffects()) {
-                if (effect.getAmplifier() == 0 && effect.getEffect().value().getCategory() == MobEffectCategory.BENEFICIAL) {
-                    tierOneBeneficial.add(new MobEffectInstance(effect));
-                }
-            }
-
-            if (tierOneBeneficial.isEmpty()) {
+            List<MobEffectInstance> baseEffects = SodaEffectReducer.acceptedPotionEffects(contents);
+            if (baseEffects.isEmpty()) {
                 continue;
             }
 
-            SodaData data = SodaEffectReducer.baseFromPotion(tierOneBeneficial, contents.getColor());
+            SodaData data = SodaEffectReducer.baseFromPotion(baseEffects, contents.getColor());
             bases.add(new PotionBaseData(id, potionItem, contents, data));
         }
         return bases;
@@ -546,7 +541,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
         double amethystReduction = CreatePopConfig.amethystShardInstabilityReduction();
         if (amethystReduction > 0.0) {
-            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) amethystReduction));
+            SodaData output = SodaEffectReducer.purifyWithAmethyst(new SodaData(List.of(new MobEffectInstance(MobEffects.POISON, SodaEffectReducer.DEFAULT_DURATION / 2)), SodaData.DEFAULT_COLOR, demoInstability));
             recipes.add(recipeHolder(
                     ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/amethyst_shard"),
                     sodaForJei(output),
