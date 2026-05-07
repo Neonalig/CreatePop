@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
 import mezz.jei.api.registration.IIngredientAliasRegistration;
+import mezz.jei.api.registration.IExtraIngredientRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.ISubtypeRegistration;
 import net.minecraft.core.component.DataComponents;
@@ -40,12 +41,15 @@ import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.CreatePop;
 import org.neonalig.createpop.component.SodaData;
 import org.neonalig.createpop.compat.create.DynamicSodaMixing;
+import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.registry.ModFluids;
 import org.neonalig.createpop.soda.SodaEffectReducer;
 import org.neonalig.createpop.soda.SodaFluidStackHelper;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -109,6 +113,13 @@ public class CreatePopJeiPlugin implements IModPlugin {
     }
 
     @Override
+    public void registerExtraIngredients(IExtraIngredientRegistration registration) {
+        if (platformFluidHelper != null) {
+            addExtraSodaIngredients(registration, platformFluidHelper);
+        }
+    }
+
+    @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         this.jeiRuntime = jeiRuntime;
         refreshRuntimeRecipes();
@@ -139,6 +150,49 @@ public class CreatePopJeiPlugin implements IModPlugin {
                 DataComponentPatch.EMPTY);
         registration.addAliases(fluidType, soda,
                 List.of("Soda", "pop", "fizzy drink", "alchemical soda"));
+    }
+
+    private static <T> void addExtraSodaIngredients(IExtraIngredientRegistration registration,
+                                                     IPlatformFluidHelper<T> helper) {
+        List<PotionBaseData> potionBases = collectPotionBases();
+        Map<String, SodaData> unique = new LinkedHashMap<>();
+
+        addSodaVariant(unique, SodaData.EMPTY);
+        for (PotionBaseData base : potionBases) {
+            addSodaVariant(unique, base.sodaData());
+        }
+
+        long representativeSeed = 0L;
+        for (int i = 0; i < potionBases.size(); i++) {
+            for (int j = i + 1; j < potionBases.size(); j++) {
+                SodaData mixed = SodaEffectReducer.mix(
+                        potionBases.get(i).sodaData(),
+                        potionBases.get(j).sodaData(),
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        representativeSeed
+                );
+                addSodaVariant(unique, mixed);
+            }
+        }
+
+        List<T> extras = new ArrayList<>();
+        for (SodaData data : unique.values()) {
+            DataComponentPatch patch = DataComponentPatch.builder()
+                    .set(ModDataComponents.SODA_DATA.get(), data)
+                    .build();
+            extras.add(helper.create(
+                    BuiltInRegistries.FLUID.wrapAsHolder(ModFluids.SODA.get()),
+                    DynamicSodaMixing.DRINK_AMOUNT,
+                    patch
+            ));
+        }
+
+        registration.addExtraIngredients(helper.getFluidIngredientType(), extras);
+    }
+
+    private static void addSodaVariant(Map<String, SodaData> unique, SodaData data) {
+        unique.putIfAbsent(sodaSubtypeKey(data), data);
     }
 
     private void onClientLogin(ClientPlayerNetworkEvent.LoggingIn event) {
