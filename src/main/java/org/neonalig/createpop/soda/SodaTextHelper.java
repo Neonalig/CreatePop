@@ -38,7 +38,8 @@ public final class SodaTextHelper {
             effectText = Component.translatable("potion.withAmplifier", effectText, Component.translatable("potion.potency." + effect.getAmplifier()));
         }
         if (effect.getDuration() > 20) {
-            effectText = Component.translatable("potion.withDuration", effectText, MobEffectUtil.formatDuration(effect, 1.0F, 1.0F));
+            // Match vanilla 20 tps duration scaling so 3-8 minute potion effects are not shown as hour-long.
+            effectText = Component.translatable("potion.withDuration", effectText, MobEffectUtil.formatDuration(effect, 1.0F, 20.0F));
         }
 
         MobEffectCategory category = effect.getEffect().value().getCategory();

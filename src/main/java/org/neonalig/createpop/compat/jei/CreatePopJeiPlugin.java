@@ -218,21 +218,14 @@ public class CreatePopJeiPlugin implements IModPlugin {
                 SodaData outputData = SodaEffectReducer.mix(first.sodaData(), second.sodaData(), DynamicSodaMixing.DRINK_AMOUNT, DynamicSodaMixing.DRINK_AMOUNT, worldSeed);
                 FluidStack output = sodaForJei(outputData);
 
+                // Show as: soda(A) + potion_item(B) → soda(A+B).
+                // The first input is always a soda — you can't mix two raw potions; you need an existing soda base.
                 String key = first.id().getPath() + "__" + second.id().getPath();
-                FluidStack potionFluid = potionFluid(second.contents());
-                if (!potionFluid.isEmpty()) {
-                    recipes.add(recipeHolder(
-                            ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/hint/" + key + "_potion_fluid"),
-                            output,
-                            List.of(exactFluid(firstSoda), exactFluid(potionFluid))
-                    ));
-                }
-
-                FluidStack secondSoda = sodaForJei(second.sodaData());
                 recipes.add(recipeHolder(
-                        ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/hint/" + key + "_soda"),
+                        ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/hint/" + key),
                         output,
-                        List.of(exactFluid(firstSoda), exactFluid(secondSoda))
+                        List.of(exactFluid(firstSoda)),
+                        Ingredient.of(second.potionItem())
                 ));
             }
         }

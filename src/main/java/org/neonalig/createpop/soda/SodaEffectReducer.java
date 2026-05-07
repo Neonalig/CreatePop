@@ -198,32 +198,39 @@ public final class SodaEffectReducer {
             return Optional.empty();
         }
 
+        // Total "potion-time" available from both consumed effects.
+        int totalDuration = first.getDuration() + second.getDuration();
+        int baseAmplifier = Math.max(first.getAmplifier(), second.getAmplifier());
+
         int reactionType = random.nextInt(3);
         return switch (reactionType) {
-            case 0 -> Optional.of(List.of(randomOutcome(random, validOutcomes, first, second))); // Fusion
-            case 1 -> Optional.of(fissionOutcomes(random, validOutcomes, first, second)); // Byproduct
-            default -> Optional.of(List.of(new MobEffectInstance(first), randomOutcome(random, validOutcomes, first, second))); // Catalysis
+            // Fusion: both effects consumed, all their time goes to one new effect.
+            case 0 -> Optional.of(List.of(randomOutcome(random, validOutcomes, totalDuration, baseAmplifier)));
+            // Fission: both effects consumed, total time split evenly between two new effects.
+            case 1 -> Optional.of(fissionOutcomes(random, validOutcomes, totalDuration, baseAmplifier));
+            // Catalysis: first effect kept with its own time, second is consumed and its time passes to the new effect.
+            default -> Optional.of(List.of(new MobEffectInstance(first), randomOutcome(random, validOutcomes, second.getDuration(), baseAmplifier)));
         };
     }
 
-    private static MobEffectInstance randomOutcome(RandomSource random, List<Holder<MobEffect>> outcomes, MobEffectInstance first, MobEffectInstance second) {
+    private static MobEffectInstance randomOutcome(RandomSource random, List<Holder<MobEffect>> outcomes, int duration, int baseAmplifier) {
         Holder<MobEffect> effect = outcomes.get(random.nextInt(outcomes.size()));
-        int durationFloor = Math.max(DEFAULT_DURATION, Math.max(first.getDuration(), second.getDuration()));
-        int duration = Math.max(MIN_EFFECT_DURATION, (int) (durationFloor * (0.75f + random.nextFloat() * 0.5f)));
-        int amplifier = Math.min(3, Math.max(first.getAmplifier(), second.getAmplifier()) + (random.nextFloat() < 0.35f ? 1 : 0));
-        return new MobEffectInstance(effect, duration, amplifier);
+        int finalDuration = Math.max(MIN_EFFECT_DURATION, duration);
+        int amplifier = Math.min(3, baseAmplifier + (random.nextFloat() < 0.35f ? 1 : 0));
+        return new MobEffectInstance(effect, finalDuration, amplifier);
     }
 
-    private static List<MobEffectInstance> fissionOutcomes(RandomSource random, List<Holder<MobEffect>> outcomes, MobEffectInstance first, MobEffectInstance second) {
-        MobEffectInstance primary = randomOutcome(random, outcomes, first, second);
+    private static List<MobEffectInstance> fissionOutcomes(RandomSource random, List<Holder<MobEffect>> outcomes, int totalDuration, int baseAmplifier) {
+        int splitDuration = Math.max(MIN_EFFECT_DURATION, totalDuration / 2);
+        MobEffectInstance primary = randomOutcome(random, outcomes, splitDuration, baseAmplifier);
         List<Holder<MobEffect>> byproductPool = outcomes.stream()
                 .filter(holder -> !holder.equals(primary.getEffect()))
                 .toList();
         MobEffectInstance byproduct = randomOutcome(
                 random,
                 byproductPool.isEmpty() ? outcomes : byproductPool,
-                first,
-                second
+                splitDuration,
+                baseAmplifier
         );
         return List.of(primary, byproduct);
     }
@@ -244,7 +251,9 @@ public final class SodaEffectReducer {
     }
 
     private static MobEffectInstance combineMatchingEffects(MobEffectInstance first, MobEffectInstance second, int firstAmount, int secondAmount, int totalAmount) {
-        int duration = weightedAverage(first.getDuration(), second.getDuration(), firstAmount, secondAmount, totalAmount);
+        // Same effect: carry over both durations fully. Instability already handles the risk of repeated stacking.
+        int duration = first.getDuration() + second.getDuration();
+
         int amplifier = weightedAverage(first.getAmplifier(), second.getAmplifier(), firstAmount, secondAmount, totalAmount);
         return new MobEffectInstance(
                 first.getEffect(),
