@@ -124,7 +124,7 @@ public final class DynamicSodaMixing {
                 if (FluidStack.isSameFluidSameComponents(first.stack(), second.stack())) {
                     continue;
                 }
-                SodaData mixed = SodaEffectReducer.mix(first.data(), second.data(), seed);
+                SodaData mixed = SodaEffectReducer.mix(first.data(), second.data(), DRINK_AMOUNT, DRINK_AMOUNT, seed);
                 FluidStack output = SodaFluidStackHelper.soda(DRINK_AMOUNT, mixed);
                 return Optional.of(recipe("soda_mix", output, List.of(exactFluid(first.stack(), DRINK_AMOUNT), exactFluid(second.stack(), DRINK_AMOUNT))));
             }

@@ -13,8 +13,11 @@ import org.neonalig.createpop.component.SodaData;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -23,7 +26,9 @@ public final class SodaEffectReducer {
     public static final float POSITIVE_MIX_INSTABILITY = 0.18f;
     public static final float INSTABILITY_THRESHOLD = 0.8f;
     public static final float SAFE_INSTABILITY = 0.35f;
+    public static final float REACTION_AFFINITY_THRESHOLD = 0.30f;
     public static final int DEFAULT_DURATION = 20 * 60 * 4;
+    private static final int MIN_EFFECT_DURATION = 20 * 8;
 
     private static final List<Holder<MobEffect>> HIGHER_TIER_POOL = List.of(
             MobEffects.REGENERATION,
@@ -54,11 +59,13 @@ public final class SodaEffectReducer {
     }
 
     public static SodaData mix(SodaData first, SodaData second, long worldSeed) {
-        List<MobEffectInstance> combined = new ArrayList<>();
-        combined.addAll(copyEffects(first.effects()));
-        combined.addAll(copyEffects(second.effects()));
+        return mix(first, second, 1, 1, worldSeed);
+    }
 
-        Reduction reduction = reduce(combined, worldSeed);
+    public static SodaData mix(SodaData first, SodaData second, int firstAmount, int secondAmount, long worldSeed) {
+        List<MobEffectInstance> combined = mergeWithDilution(first.effects(), second.effects(), firstAmount, secondAmount);
+
+        Reduction reduction = resolveMix(combined, worldSeed);
         float instability = first.instability() + second.instability() + reduction.positiveReductions() * POSITIVE_MIX_INSTABILITY;
         List<MobEffectInstance> resolved = reduction.effects();
 
@@ -69,7 +76,7 @@ public final class SodaEffectReducer {
         }
 
         resolved.sort(Comparator.comparing(SodaEffectReducer::effectId));
-        return new SodaData(resolved, SodaData.averageColor(first.color(), second.color()), instability);
+        return new SodaData(resolved, weightedAverageColor(first.color(), second.color(), firstAmount, secondAmount), instability);
     }
 
     public static boolean isPositive(MobEffectInstance effect) {
@@ -84,10 +91,10 @@ public final class SodaEffectReducer {
         return copy;
     }
 
-    private static Reduction reduce(List<MobEffectInstance> input, long worldSeed) {
+    private static Reduction resolveMix(List<MobEffectInstance> input, long worldSeed) {
         List<MobEffectInstance> effects = coalesce(input);
         int positiveReductions = 0;
-        Set<String> seenPairs = new HashSet<>();
+        Set<String> resolvedPairs = new HashSet<>();
 
         boolean changed;
         do {
@@ -107,14 +114,18 @@ public final class SodaEffectReducer {
                     }
 
                     String pairKey = pairKey(first, second);
-                    if (!seenPairs.add(pairKey)) {
+                    if (!resolvedPairs.add(pairKey)) {
                         continue;
                     }
 
-                    MobEffectInstance result = deterministicPositiveEffect(first, second, worldSeed);
+                    Optional<List<MobEffectInstance>> reaction = resolveReaction(first, second, worldSeed);
+                    if (reaction.isEmpty()) {
+                        continue;
+                    }
+
                     effects.remove(j);
                     effects.remove(i);
-                    effects.add(result);
+                    effects.addAll(copyEffects(reaction.get()));
                     effects = coalesce(effects);
                     positiveReductions++;
                     changed = true;
@@ -124,6 +135,38 @@ public final class SodaEffectReducer {
         } while (changed);
 
         return new Reduction(effects, positiveReductions);
+    }
+
+    private static List<MobEffectInstance> mergeWithDilution(List<MobEffectInstance> firstEffects, List<MobEffectInstance> secondEffects, int firstAmount, int secondAmount) {
+        int leftAmount = Math.max(1, firstAmount);
+        int rightAmount = Math.max(1, secondAmount);
+        int totalAmount = leftAmount + rightAmount;
+
+        Map<String, MobEffectInstance> left = indexById(coalesce(copyEffects(firstEffects)));
+        Map<String, MobEffectInstance> right = indexById(coalesce(copyEffects(secondEffects)));
+        Set<String> allIds = new HashSet<>();
+        allIds.addAll(left.keySet());
+        allIds.addAll(right.keySet());
+
+        List<MobEffectInstance> merged = new ArrayList<>();
+        for (String id : allIds) {
+            MobEffectInstance leftEffect = left.get(id);
+            MobEffectInstance rightEffect = right.get(id);
+            MobEffectInstance candidate;
+            if (leftEffect != null && rightEffect != null) {
+                candidate = combineMatchingEffects(leftEffect, rightEffect, leftAmount, rightAmount, totalAmount);
+            } else {
+                MobEffectInstance source = leftEffect != null ? leftEffect : rightEffect;
+                int sourceAmount = leftEffect != null ? leftAmount : rightAmount;
+                candidate = diluteEffect(source, sourceAmount, totalAmount);
+            }
+
+            if (candidate != null && candidate.getDuration() >= MIN_EFFECT_DURATION) {
+                merged.add(candidate);
+            }
+        }
+
+        return coalesce(merged);
     }
 
     private static List<MobEffectInstance> coalesce(List<MobEffectInstance> effects) {
@@ -141,12 +184,102 @@ public final class SodaEffectReducer {
         return result;
     }
 
-    private static MobEffectInstance deterministicPositiveEffect(MobEffectInstance first, MobEffectInstance second, long worldSeed) {
-        RandomSource random = RandomSource.create(hashPair(first, second, worldSeed));
-        Holder<MobEffect> effect = HIGHER_TIER_POOL.get(random.nextInt(HIGHER_TIER_POOL.size()));
-        int duration = Math.max(Math.max(first.getDuration(), second.getDuration()), DEFAULT_DURATION);
-        int amplifier = Math.min(2, Math.max(first.getAmplifier(), second.getAmplifier()) + (random.nextBoolean() ? 1 : 0));
+    private static Optional<List<MobEffectInstance>> resolveReaction(MobEffectInstance first, MobEffectInstance second, long worldSeed) {
+        long comboHash = hashPair(first, second, worldSeed);
+        RandomSource random = RandomSource.create(comboHash);
+        float affinity = random.nextFloat();
+
+        if (affinity > REACTION_AFFINITY_THRESHOLD) {
+            return Optional.empty();
+        }
+
+        List<Holder<MobEffect>> validOutcomes = validOutcomes(first, second);
+        if (validOutcomes.isEmpty()) {
+            return Optional.empty();
+        }
+
+        int reactionType = random.nextInt(3);
+        return switch (reactionType) {
+            case 0 -> Optional.of(List.of(randomOutcome(random, validOutcomes, first, second))); // Fusion
+            case 1 -> Optional.of(fissionOutcomes(random, validOutcomes, first, second)); // Byproduct
+            default -> Optional.of(List.of(new MobEffectInstance(first), randomOutcome(random, validOutcomes, first, second))); // Catalysis
+        };
+    }
+
+    private static MobEffectInstance randomOutcome(RandomSource random, List<Holder<MobEffect>> outcomes, MobEffectInstance first, MobEffectInstance second) {
+        Holder<MobEffect> effect = outcomes.get(random.nextInt(outcomes.size()));
+        int durationFloor = Math.max(DEFAULT_DURATION, Math.max(first.getDuration(), second.getDuration()));
+        int duration = Math.max(MIN_EFFECT_DURATION, (int) (durationFloor * (0.75f + random.nextFloat() * 0.5f)));
+        int amplifier = Math.min(3, Math.max(first.getAmplifier(), second.getAmplifier()) + (random.nextFloat() < 0.35f ? 1 : 0));
         return new MobEffectInstance(effect, duration, amplifier);
+    }
+
+    private static List<MobEffectInstance> fissionOutcomes(RandomSource random, List<Holder<MobEffect>> outcomes, MobEffectInstance first, MobEffectInstance second) {
+        MobEffectInstance primary = randomOutcome(random, outcomes, first, second);
+        List<Holder<MobEffect>> byproductPool = outcomes.stream()
+                .filter(holder -> !holder.equals(primary.getEffect()))
+                .toList();
+        MobEffectInstance byproduct = randomOutcome(
+                random,
+                byproductPool.isEmpty() ? outcomes : byproductPool,
+                first,
+                second
+        );
+        return List.of(primary, byproduct);
+    }
+
+    private static List<Holder<MobEffect>> validOutcomes(MobEffectInstance first, MobEffectInstance second) {
+        String firstId = effectId(first);
+        String secondId = effectId(second);
+        return HIGHER_TIER_POOL.stream()
+                .filter(holder -> {
+                    ResourceLocation id = BuiltInRegistries.MOB_EFFECT.getKey(holder.value());
+                    if (id == null) {
+                        return false;
+                    }
+                    String key = id.toString();
+                    return !key.equals(firstId) && !key.equals(secondId);
+                })
+                .toList();
+    }
+
+    private static MobEffectInstance combineMatchingEffects(MobEffectInstance first, MobEffectInstance second, int firstAmount, int secondAmount, int totalAmount) {
+        int duration = weightedAverage(first.getDuration(), second.getDuration(), firstAmount, secondAmount, totalAmount);
+        int amplifier = weightedAverage(first.getAmplifier(), second.getAmplifier(), firstAmount, secondAmount, totalAmount);
+        return new MobEffectInstance(
+                first.getEffect(),
+                duration,
+                amplifier,
+                first.isAmbient() || second.isAmbient(),
+                first.isVisible() || second.isVisible(),
+                first.showIcon() || second.showIcon()
+        );
+    }
+
+    private static MobEffectInstance diluteEffect(MobEffectInstance source, int sourceAmount, int totalAmount) {
+        float ratio = sourceAmount / (float) totalAmount;
+        int duration = Math.round(source.getDuration() * ratio);
+        int amplifier = source.getAmplifier();
+
+        if (ratio < 0.5f && amplifier > 0) {
+            amplifier--;
+        }
+        if (ratio < 0.25f && amplifier > 0) {
+            amplifier--;
+        }
+
+        if (duration < MIN_EFFECT_DURATION) {
+            return null;
+        }
+
+        return new MobEffectInstance(
+                source.getEffect(),
+                duration,
+                amplifier,
+                source.isAmbient(),
+                source.isVisible(),
+                source.showIcon()
+        );
     }
 
     private static MobEffectInstance deterministicNegativeEffect(List<MobEffectInstance> effects, long worldSeed) {
@@ -160,7 +293,7 @@ public final class SodaEffectReducer {
     }
 
     private static long hashPair(MobEffectInstance first, MobEffectInstance second, long worldSeed) {
-        return mixHash(mixHash(worldSeed, sortedId(first, second, 0)), sortedId(first, second, 1));
+        return Objects.hash(worldSeed, sortedId(first, second, 0), sortedId(first, second, 1));
     }
 
     private static String pairKey(MobEffectInstance first, MobEffectInstance second) {
@@ -188,6 +321,29 @@ public final class SodaEffectReducer {
             hash *= 0x100000001B3L;
         }
         return hash;
+    }
+
+    private static Map<String, MobEffectInstance> indexById(List<MobEffectInstance> effects) {
+        Map<String, MobEffectInstance> byId = new HashMap<>();
+        for (MobEffectInstance effect : effects) {
+            byId.put(effectId(effect), new MobEffectInstance(effect));
+        }
+        return byId;
+    }
+
+    private static int weightedAverage(int first, int second, int firstWeight, int secondWeight, int totalWeight) {
+        if (totalWeight <= 0) {
+            return Math.max(first, second);
+        }
+        return Math.round(((first * firstWeight) + (second * secondWeight)) / (float) totalWeight);
+    }
+
+    private static int weightedAverageColor(int first, int second, int firstWeight, int secondWeight) {
+        int totalWeight = Math.max(1, firstWeight + secondWeight);
+        int r = ((((first >> 16) & 0xFF) * firstWeight) + (((second >> 16) & 0xFF) * secondWeight)) / totalWeight;
+        int g = ((((first >> 8) & 0xFF) * firstWeight) + (((second >> 8) & 0xFF) * secondWeight)) / totalWeight;
+        int b = (((first & 0xFF) * firstWeight) + ((second & 0xFF) * secondWeight)) / totalWeight;
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     private record Reduction(List<MobEffectInstance> effects, int positiveReductions) {
