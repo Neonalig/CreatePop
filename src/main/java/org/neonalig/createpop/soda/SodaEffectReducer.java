@@ -24,11 +24,12 @@ import java.util.Optional;
 import java.util.Set;
 
 public final class SodaEffectReducer {
-    public static final float DEFAULT_BASE_INSTABILITY_GAIN = 0.18f;
-    public static final float DEFAULT_MIX_REACTION_INSTABILITY_GAIN = 0.30f;
-    public static final float INSTABILITY_THRESHOLD = 0.8f;
-    public static final float SAFE_INSTABILITY = 0.35f;
-    public static final float REACTION_AFFINITY_THRESHOLD = 0.30f;
+    public static final float DEFAULT_BASE_INSTABILITY_GAIN = 0.24f;
+    public static final float DEFAULT_MIX_REACTION_INSTABILITY_GAIN = 0.45f;
+    public static final float DEFAULT_MIX_FLAT_INSTABILITY_GAIN = 0.12f;
+    public static final float DEFAULT_INSTABILITY_THRESHOLD = 0.70f;
+    public static final float DEFAULT_SAFE_INSTABILITY_AFTER_BACKFIRE = 0.45f;
+    public static final float DEFAULT_REACTION_AFFINITY_THRESHOLD = 0.45f;
     public static final int DEFAULT_DURATION = 20 * 60 * 4;
     private static final int MIN_EFFECT_DURATION = 20 * 8;
 
@@ -134,13 +135,16 @@ public final class SodaEffectReducer {
         List<MobEffectInstance> combined = mergeWithDilution(first.effects(), second.effects(), firstAmount, secondAmount);
 
         Reduction reduction = resolveMix(combined, worldSeed);
-        float instability = first.instability() + second.instability() + reduction.positiveReductions() * mixReactionInstabilityGain();
+        float instability = first.instability()
+                + second.instability()
+                + mixFlatInstabilityGain()
+                + reduction.positiveReductions() * mixReactionInstabilityGain();
         List<MobEffectInstance> resolved = reduction.effects();
 
-        if (instability > INSTABILITY_THRESHOLD) {
+        if (instability > instabilityThreshold()) {
             resolved = new ArrayList<>(resolved);
             resolved.add(deterministicNegativeEffect(resolved, worldSeed));
-            instability = SAFE_INSTABILITY;
+            instability = safeInstabilityAfterBackfire();
         }
 
         resolved.sort(Comparator.comparing(SodaEffectReducer::effectId));
@@ -254,7 +258,7 @@ public final class SodaEffectReducer {
         RandomSource random = RandomSource.create(comboHash);
         float affinity = random.nextFloat();
 
-        if (affinity > REACTION_AFFINITY_THRESHOLD) {
+        if (affinity > reactionAffinityThreshold()) {
             return Optional.empty();
         }
 
@@ -458,6 +462,38 @@ public final class SodaEffectReducer {
             return (float) CreatePopConfig.mixReactionInstabilityGain();
         } catch (IllegalStateException ignored) {
             return DEFAULT_MIX_REACTION_INSTABILITY_GAIN;
+        }
+    }
+
+    private static float mixFlatInstabilityGain() {
+        try {
+            return (float) CreatePopConfig.mixFlatInstabilityGain();
+        } catch (IllegalStateException ignored) {
+            return DEFAULT_MIX_FLAT_INSTABILITY_GAIN;
+        }
+    }
+
+    private static float instabilityThreshold() {
+        try {
+            return (float) CreatePopConfig.instabilityThreshold();
+        } catch (IllegalStateException ignored) {
+            return DEFAULT_INSTABILITY_THRESHOLD;
+        }
+    }
+
+    private static float safeInstabilityAfterBackfire() {
+        try {
+            return (float) CreatePopConfig.safeInstabilityAfterBackfire();
+        } catch (IllegalStateException ignored) {
+            return DEFAULT_SAFE_INSTABILITY_AFTER_BACKFIRE;
+        }
+    }
+
+    private static float reactionAffinityThreshold() {
+        try {
+            return (float) CreatePopConfig.reactionAffinityThreshold();
+        } catch (IllegalStateException ignored) {
+            return DEFAULT_REACTION_AFFINITY_THRESHOLD;
         }
     }
 

@@ -32,14 +32,36 @@ public final class CreatePopConfig {
     public static final ModConfigSpec.DoubleValue BASE_POTION_INSTABILITY_GAIN = COMMON_BUILDER
             .comment("Instability assigned when creating a soda base from carbonated water + potion.",
                      "Higher values make instability ramp sooner across remix chains.",
-                     "Range: 0.0 to 2.0. Default: 0.18.")
-            .defineInRange("basePotionInstabilityGain", 0.18, 0.0, 2.0);
+                     "Range: 0.0 to 2.0. Default: 0.24.")
+            .defineInRange("basePotionInstabilityGain", 0.24, 0.0, 2.0);
 
     public static final ModConfigSpec.DoubleValue MIX_REACTION_INSTABILITY_GAIN = COMMON_BUILDER
             .comment("Extra instability added per positive reaction resolved during soda remixing.",
                      "Higher values make negative side effects appear after fewer mixes.",
-                     "Range: 0.0 to 2.0. Default: 0.30.")
-            .defineInRange("mixReactionInstabilityGain", 0.30, 0.0, 2.0);
+                     "Range: 0.0 to 2.0. Default: 0.45.")
+            .defineInRange("mixReactionInstabilityGain", 0.45, 0.0, 2.0);
+
+    public static final ModConfigSpec.DoubleValue MIX_FLAT_INSTABILITY_GAIN = COMMON_BUILDER
+            .comment("Flat instability added on every soda remix, regardless of reaction outcomes.",
+                     "Use this to make repeated remix chains become risky faster.",
+                     "Range: 0.0 to 2.0. Default: 0.12.")
+            .defineInRange("mixFlatInstabilityGain", 0.12, 0.0, 2.0);
+
+    public static final ModConfigSpec.DoubleValue INSTABILITY_THRESHOLD = COMMON_BUILDER
+            .comment("Instability threshold where a remix backfires and injects a negative effect.",
+                     "Range: 0.0 to 1.0. Default: 0.70.")
+            .defineInRange("instabilityThreshold", 0.70, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue SAFE_INSTABILITY_AFTER_BACKFIRE = COMMON_BUILDER
+            .comment("Instability reset value after a threshold backfire occurs.",
+                     "Range: 0.0 to 1.0. Default: 0.45.")
+            .defineInRange("safeInstabilityAfterBackfire", 0.45, 0.0, 1.0);
+
+    public static final ModConfigSpec.DoubleValue REACTION_AFFINITY_THRESHOLD = COMMON_BUILDER
+            .comment("Chance gate threshold for two effects to react during remix resolution.",
+                     "Higher values allow more reactions.",
+                     "Range: 0.0 to 1.0. Default: 0.45.")
+            .defineInRange("reactionAffinityThreshold", 0.45, 0.0, 1.0);
 
     public static final ModConfigSpec COMMON_SPEC = COMMON_BUILDER.build();
 
@@ -68,6 +90,22 @@ public final class CreatePopConfig {
 
     public static double mixReactionInstabilityGain() {
         return MIX_REACTION_INSTABILITY_GAIN.get();
+    }
+
+    public static double mixFlatInstabilityGain() {
+        return MIX_FLAT_INSTABILITY_GAIN.get();
+    }
+
+    public static double instabilityThreshold() {
+        return INSTABILITY_THRESHOLD.get();
+    }
+
+    public static double safeInstabilityAfterBackfire() {
+        return SAFE_INSTABILITY_AFTER_BACKFIRE.get();
+    }
+
+    public static double reactionAffinityThreshold() {
+        return REACTION_AFFINITY_THRESHOLD.get();
     }
 }
 

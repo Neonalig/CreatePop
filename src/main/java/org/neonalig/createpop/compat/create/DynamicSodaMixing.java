@@ -366,7 +366,7 @@ public final class DynamicSodaMixing {
             return Optional.empty();
         }
 
-        return Optional.of(new SodaInput(stack, SodaData.ofPotion(baseEffects, potion.getColor()), false, false, true));
+        return Optional.of(new SodaInput(stack, SodaEffectReducer.baseFromPotion(baseEffects, potion.getColor()), false, false, true));
     }
 
     private record SodaInput(FluidStack stack, SodaData data, boolean carbonatedWater, boolean soda, boolean potion) {
