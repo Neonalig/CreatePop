@@ -44,10 +44,19 @@ public class SodaBottleFluidHandler implements IFluidHandlerItem {
 
     @Override
     public int fill(FluidStack resource, FluidAction action) {
-        if (container.getCount() != 1 || !container.is(Items.GLASS_BOTTLE)) {
+        if (!container.is(Items.GLASS_BOTTLE)) {
             return 0;
         }
         if (resource.getAmount() < DynamicSodaMixing.DRINK_AMOUNT) {
+            return 0;
+        }
+
+        // Create checks fillability with SIMULATE on the original stack.
+        // Accept stacked bottles there; EXECUTE still requires a single split item.
+        if (!action.execute()) {
+            return container.getCount() > 0 ? DynamicSodaMixing.DRINK_AMOUNT : 0;
+        }
+        if (container.getCount() != 1) {
             return 0;
         }
 

@@ -54,9 +54,12 @@ public class SodaNamePromptScreen extends Screen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.fill(0, 0, this.width, this.height, 0x66000000);
+        for (net.minecraft.client.gui.components.Renderable renderable : this.renderables) {
+            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
         guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, (this.height / 2) - 35, 0xFFFFFF);
         guiGraphics.drawCenteredString(this.font, Component.translatable("createpop.soda_name_prompt.subtitle"), this.width / 2, (this.height / 2) - 23, 0xA0A0A0);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override

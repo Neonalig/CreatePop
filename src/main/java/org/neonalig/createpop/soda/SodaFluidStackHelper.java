@@ -1,8 +1,12 @@
 package org.neonalig.createpop.soda;
 
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.component.SodaData;
 import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.registry.ModFluids;
@@ -45,6 +49,7 @@ public final class SodaFluidStackHelper {
     public static ItemStack sodaBucket(SodaData data) {
         ItemStack stack = new ItemStack(ModFluids.SODA_BUCKET.get());
         stack.set(ModDataComponents.SODA_DATA.get(), data);
+        applyKnownSodaName(stack, data);
         return stack;
     }
 
@@ -66,6 +71,7 @@ public final class SodaFluidStackHelper {
     public static ItemStack sodaBottle(SodaData data) {
         ItemStack stack = new ItemStack(ModFluids.SODA_BOTTLE.get());
         stack.set(ModDataComponents.SODA_DATA.get(), data);
+        applyKnownSodaName(stack, data);
         return stack;
     }
 
@@ -79,11 +85,30 @@ public final class SodaFluidStackHelper {
         return stack.getOrDefault(ModDataComponents.SODA_DATA.get(), SodaData.EMPTY);
     }
 
+    public static void applyKnownSodaName(ItemStack stack, SodaData data) {
+        String name = resolveKnownSodaName(data);
+        if (name != null && !name.isBlank()) {
+            stack.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(style -> style.withItalic(false)));
+        }
+    }
+
     private static void copyStabiliser(ItemStack source, FluidStack target) {
         String stabiliser = source.get(ModDataComponents.SODA_STABILISER.get());
         if (stabiliser != null && !stabiliser.isBlank()) {
             target.set(ModDataComponents.SODA_STABILISER.get(), stabiliser);
         }
+    }
+
+    private static String resolveKnownSodaName(SodaData data) {
+        if (data.equals(SodaData.EMPTY)) {
+            return null;
+        }
+        var server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return null;
+        }
+        String key = BrewersNotebookData.keyFor(data);
+        return SodaNameRegistrySavedData.get(server.overworld()).getName(key);
     }
 }
 

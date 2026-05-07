@@ -4,6 +4,7 @@ import com.mojang.serialization.DataResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.nbt.CompoundTag;
@@ -71,9 +72,19 @@ public final class BrewingDiscoveryManager {
 
     public static boolean learnFromStack(Player player, ItemStack stack) {
         if (stack.is(ModFluids.SODA_BOTTLE.get()) || stack.is(ModFluids.SODA_BUCKET.get())) {
+            syncKnownNameOnStack(player, stack);
             return learn(player, SodaFluidStackHelper.getSodaData(stack), List.of());
         }
         return false;
+    }
+
+    public static void syncKnownNamesInInventory(ServerPlayer player) {
+        for (ItemStack stack : player.getInventory().items) {
+            syncKnownNameOnStack(player, stack);
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            syncKnownNameOnStack(player, stack);
+        }
     }
 
     public static boolean learnFromFluid(Player player, FluidStack stack) {
@@ -276,6 +287,7 @@ public final class BrewingDiscoveryManager {
         }
 
         updateInventoryNotebooksForKey(player, key, trimmed);
+        updateInventorySodaStacksForKey(player, key, trimmed);
         CreatePopAdvancementGrants.grantNamedSoda(player);
         ModTriggers.NAMED_SODA.trigger(player);
     }
@@ -358,6 +370,50 @@ public final class BrewingDiscoveryManager {
         for (ItemStack stack : player.getInventory().offhand) {
             renameNotebookEntry(stack, key, name);
         }
+    }
+
+    private static void updateInventorySodaStacksForKey(ServerPlayer player, String key, String name) {
+        for (ItemStack stack : player.getInventory().items) {
+            renameSodaStack(stack, key, name);
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            renameSodaStack(stack, key, name);
+        }
+    }
+
+    private static void renameSodaStack(ItemStack stack, String key, String name) {
+        if (!stack.is(ModFluids.SODA_BOTTLE.get()) && !stack.is(ModFluids.SODA_BUCKET.get())) {
+            return;
+        }
+
+        SodaData data = SodaFluidStackHelper.getSodaData(stack);
+        if (!BrewersNotebookData.keyFor(data).equals(key)) {
+            return;
+        }
+
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(style -> style.withItalic(false)));
+    }
+
+    private static void syncKnownNameOnStack(Player player, ItemStack stack) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        if (!stack.is(ModFluids.SODA_BOTTLE.get()) && !stack.is(ModFluids.SODA_BUCKET.get())) {
+            return;
+        }
+
+        SodaData data = SodaFluidStackHelper.getSodaData(stack);
+        if (data.equals(SodaData.EMPTY)) {
+            return;
+        }
+
+        String key = BrewersNotebookData.keyFor(data);
+        String knownName = SodaNameRegistrySavedData.get(serverPlayer.serverLevel()).getName(key);
+        if (knownName == null || knownName.isBlank()) {
+            return;
+        }
+
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal(knownName).withStyle(style -> style.withItalic(false)));
     }
 
     private static void renameNotebookEntry(ItemStack stack, String key, String name) {

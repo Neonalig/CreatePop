@@ -151,6 +151,7 @@ public final class ModCommonEvents {
         BrewingDiscoveryManager.learnFromStack(player, event.getOriginalStack());
 
         if (player instanceof ServerPlayer serverPlayer) {
+            BrewingDiscoveryManager.syncKnownNamesInInventory(serverPlayer);
             CreatePopAdvancementGrants.grantInventoryAdvancements(serverPlayer);
             checkSodaAdvancements(serverPlayer);
         }
