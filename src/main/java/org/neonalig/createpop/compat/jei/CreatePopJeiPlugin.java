@@ -4,7 +4,7 @@ import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.helpers.IPlatformFluidHelper;
 import mezz.jei.api.ingredients.IIngredientType;
-import mezz.jei.api.ingredients.subtypes.IIngredientSubtypeInterpreter;
+import mezz.jei.api.ingredients.subtypes.ISubtypeInterpreter;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
@@ -72,6 +72,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
     private IPlatformFluidHelper<?> platformFluidHelper;
     private IJeiRuntime jeiRuntime;
     private final List<RecipeHolder<BasinRecipe>> injectedRecipes = new ArrayList<>();
+    private final List<Object> runtimeHintSodaIngredients = new ArrayList<>();
     private Boolean lastHintsEnabled;
 
     public CreatePopJeiPlugin() {
@@ -88,16 +89,43 @@ public class CreatePopJeiPlugin implements IModPlugin {
     @Override
     public <T> void registerFluidSubtypes(ISubtypeRegistration registration, IPlatformFluidHelper<T> helper) {
         this.platformFluidHelper = helper;
-        registration.registerSubtypeInterpreter(ModFluids.SODA_BOTTLE.get(), (stack, context) ->
-                sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack)));
-        registration.registerSubtypeInterpreter(ModFluids.SODA_BUCKET.get(), (stack, context) ->
-                sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack)));
-        registration.registerSubtypeInterpreter(helper.getFluidIngredientType(), ModFluids.SODA.get(), (ingredient, context) -> {
-            if (!(ingredient instanceof FluidStack stack) || stack.isEmpty()) {
-                return IIngredientSubtypeInterpreter.NONE;
+        registration.registerSubtypeInterpreter(ModFluids.SODA_BOTTLE.get(), sodaItemSubtypeInterpreter());
+        registration.registerSubtypeInterpreter(ModFluids.SODA_BUCKET.get(), sodaItemSubtypeInterpreter());
+        registration.registerSubtypeInterpreter(helper.getFluidIngredientType(), ModFluids.SODA.get(), sodaFluidSubtypeInterpreter());
+    }
+
+    private static ISubtypeInterpreter<ItemStack> sodaItemSubtypeInterpreter() {
+        return new ISubtypeInterpreter<>() {
+            @Override
+            public Object getSubtypeData(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
             }
-            return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
-        });
+
+            @Override
+            public String getLegacyStringSubtypeInfo(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+            }
+        };
+    }
+
+    private static <T> ISubtypeInterpreter<T> sodaFluidSubtypeInterpreter() {
+        return new ISubtypeInterpreter<>() {
+            @Override
+            public Object getSubtypeData(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
+                    return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                }
+                return "";
+            }
+
+            @Override
+            public String getLegacyStringSubtypeInfo(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
+                    return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                }
+                return "";
+            }
+        };
     }
 
     @Override
@@ -115,18 +143,20 @@ public class CreatePopJeiPlugin implements IModPlugin {
     @Override
     public void registerExtraIngredients(IExtraIngredientRegistration registration) {
         if (platformFluidHelper != null) {
-            addExtraSodaIngredients(registration, platformFluidHelper);
+            addBaseSodaIngredients(registration, platformFluidHelper);
         }
     }
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         this.jeiRuntime = jeiRuntime;
+        refreshRuntimeHintSodaIngredients();
         refreshRuntimeRecipes();
     }
 
     @Override
     public void onRuntimeUnavailable() {
+        clearRuntimeHintSodaIngredients();
         clearInjectedRecipes();
         this.jeiRuntime = null;
     }
@@ -152,8 +182,8 @@ public class CreatePopJeiPlugin implements IModPlugin {
                 List.of("Soda", "pop", "fizzy drink", "alchemical soda"));
     }
 
-    private static <T> void addExtraSodaIngredients(IExtraIngredientRegistration registration,
-                                                     IPlatformFluidHelper<T> helper) {
+    private static <T> void addBaseSodaIngredients(IExtraIngredientRegistration registration,
+                                                    IPlatformFluidHelper<T> helper) {
         List<PotionBaseData> potionBases = collectPotionBases();
         Map<String, SodaData> unique = new LinkedHashMap<>();
 
@@ -162,28 +192,15 @@ public class CreatePopJeiPlugin implements IModPlugin {
             addSodaVariant(unique, base.sodaData());
         }
 
-        long representativeSeed = 0L;
-        for (int i = 0; i < potionBases.size(); i++) {
-            for (int j = i + 1; j < potionBases.size(); j++) {
-                SodaData mixed = SodaEffectReducer.mix(
-                        potionBases.get(i).sodaData(),
-                        potionBases.get(j).sodaData(),
-                        DynamicSodaMixing.DRINK_AMOUNT,
-                        DynamicSodaMixing.DRINK_AMOUNT,
-                        representativeSeed
-                );
-                addSodaVariant(unique, mixed);
-            }
-        }
-
         List<T> extras = new ArrayList<>();
+        long listVolume = helper.bucketVolume();
         for (SodaData data : unique.values()) {
             DataComponentPatch patch = DataComponentPatch.builder()
                     .set(ModDataComponents.SODA_DATA.get(), data)
                     .build();
             extras.add(helper.create(
                     BuiltInRegistries.FLUID.wrapAsHolder(ModFluids.SODA.get()),
-                    DynamicSodaMixing.DRINK_AMOUNT,
+                    listVolume,
                     patch
             ));
         }
@@ -200,6 +217,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
     }
 
     private void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        clearRuntimeHintSodaIngredients();
         clearInjectedRecipes();
     }
 
@@ -209,6 +227,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
             return;
         }
         lastHintsEnabled = hintsEnabled;
+        refreshRuntimeHintSodaIngredients();
         refreshRuntimeRecipes();
     }
 
@@ -242,8 +261,74 @@ public class CreatePopJeiPlugin implements IModPlugin {
             return CreatePopConfig.enableJeiPotionHints();
         } catch (IllegalStateException ignored) {
             // JEI/plugin setup can run before config load; defer toggling until config is ready.
-            return true;
+            return false;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void refreshRuntimeHintSodaIngredients() {
+        if (jeiRuntime == null || platformFluidHelper == null) {
+            return;
+        }
+
+        IPlatformFluidHelper<Object> helper = (IPlatformFluidHelper<Object>) platformFluidHelper;
+        clearRuntimeHintSodaIngredients();
+
+        if (!isHintsEnabledSafe()) {
+            return;
+        }
+
+        long seed = resolveClientSeed();
+        List<Object> extras = new ArrayList<>(buildHintSodaIngredients(helper, seed));
+        if (extras.isEmpty()) {
+            return;
+        }
+
+        jeiRuntime.getIngredientManager().addIngredientsAtRuntime(helper.getFluidIngredientType(), extras);
+        runtimeHintSodaIngredients.addAll(extras);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void clearRuntimeHintSodaIngredients() {
+        if (jeiRuntime == null || platformFluidHelper == null || runtimeHintSodaIngredients.isEmpty()) {
+            return;
+        }
+
+        IPlatformFluidHelper<Object> helper = (IPlatformFluidHelper<Object>) platformFluidHelper;
+        jeiRuntime.getIngredientManager().removeIngredientsAtRuntime(helper.getFluidIngredientType(), runtimeHintSodaIngredients);
+        runtimeHintSodaIngredients.clear();
+    }
+
+    private static <T> List<T> buildHintSodaIngredients(IPlatformFluidHelper<T> helper, long worldSeed) {
+        List<PotionBaseData> potionBases = collectPotionBases();
+        Map<String, SodaData> unique = new LinkedHashMap<>();
+
+        for (int i = 0; i < potionBases.size(); i++) {
+            for (int j = i + 1; j < potionBases.size(); j++) {
+                SodaData mixed = SodaEffectReducer.mix(
+                        potionBases.get(i).sodaData(),
+                        potionBases.get(j).sodaData(),
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        DynamicSodaMixing.DRINK_AMOUNT,
+                        worldSeed
+                );
+                addSodaVariant(unique, mixed);
+            }
+        }
+
+        List<T> extras = new ArrayList<>();
+        long listVolume = helper.bucketVolume();
+        for (SodaData data : unique.values()) {
+            DataComponentPatch patch = DataComponentPatch.builder()
+                    .set(ModDataComponents.SODA_DATA.get(), data)
+                    .build();
+            extras.add(helper.create(
+                    BuiltInRegistries.FLUID.wrapAsHolder(ModFluids.SODA.get()),
+                    listVolume,
+                    patch
+            ));
+        }
+        return extras;
     }
 
     private void clearInjectedRecipes() {
