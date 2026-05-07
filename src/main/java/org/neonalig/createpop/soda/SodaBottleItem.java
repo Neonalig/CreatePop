@@ -11,10 +11,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUtils;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.network.chat.Component;
 import org.neonalig.createpop.component.SodaData;
+
+import java.util.List;
 
 public class SodaBottleItem extends Item {
     public SodaBottleItem(Properties properties) {
@@ -67,6 +71,12 @@ public class SodaBottleItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
         return ItemUtils.startUsingInstantly(level, player, usedHand);
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
+        SodaTextHelper.appendSodaTooltip(tooltip, SodaFluidStackHelper.getSodaData(stack));
     }
 }
 

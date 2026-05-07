@@ -6,5 +6,17 @@
 	"item.createpop.soda_bucket": "Soda Bucket",
 	"item.createpop.soda_bottle": "Soda Bottle",
 	"fluid_type.createpop.carbonated_water": "Carbonated Water",
-	"fluid_type.createpop.soda": "Soda"
+	"fluid_type.createpop.soda": "Soda",
+	"createpop.soda.tooltip.no_effects": "No effects",
+	"createpop.soda.tooltip.instability": "Instability: %s",
+	"createpop.command.soda_debug.players_only": "This command can only be used by a player.",
+	"createpop.command.soda_debug.no_soda": "Hold a soda bucket or soda bottle in your main/off hand.",
+	"createpop.command.soda_debug.header": "Soda debug (%s hand): %s",
+	"createpop.command.soda_debug.color": "Color: %s",
+	"createpop.command.soda_debug.instability": "Instability: %s",
+	"createpop.command.soda_debug.amount": "Fluid amount: %s mB",
+	"createpop.command.soda_debug.effects": "Effects:",
+	"createpop.command.soda_debug.no_effects": "Effects: none",
+	"createpop.command.soda_debug.hand.main": "main",
+	"createpop.command.soda_debug.hand.off": "off"
 }

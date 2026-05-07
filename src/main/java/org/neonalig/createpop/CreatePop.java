@@ -8,9 +8,11 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.neonalig.createpop.client.ModClientEvents;
+import org.neonalig.createpop.command.SodaDebugCommand;
 import org.neonalig.createpop.registry.ModCapabilities;
 import org.neonalig.createpop.registry.ModDataComponents;
 import org.neonalig.createpop.registry.ModFluids;
@@ -41,6 +43,7 @@ public class CreatePop {
         ModDataComponents.register(modEventBus);
         ModFluids.register(modEventBus);
         modEventBus.addListener(ModCapabilities::registerCapabilities);
+        NeoForge.EVENT_BUS.addListener(SodaDebugCommand::register);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             ModClientEvents.register(modEventBus);
         }
