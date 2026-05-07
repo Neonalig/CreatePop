@@ -5,6 +5,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
@@ -64,6 +66,10 @@ public class BrewersGuideScreen extends Screen {
     private int detailsTop;
     private int detailsWidth;
     private int detailsContentBottom;
+    private float uiScale = 1.0F;
+    private int renderLeft;
+    private int renderTop;
+    private boolean openSoundPlayed;
     private boolean jeiLinksAvailable;
     private LinkRegion hoveredLink;
 
@@ -80,8 +86,14 @@ public class BrewersGuideScreen extends Screen {
         clearWidgets();
         jeiLinksAvailable = queryJeiLinksAvailable();
 
-        left = (width - WINDOW_WIDTH) / 2;
-        top = (height - WINDOW_HEIGHT) / 2;
+        uiScale = Math.min(1.0F, Math.min((width - 8.0F) / WINDOW_WIDTH, (height - 8.0F) / WINDOW_HEIGHT));
+        if (!Float.isFinite(uiScale) || uiScale <= 0.0F) {
+            uiScale = 1.0F;
+        }
+        renderLeft = Math.round((width - (WINDOW_WIDTH * uiScale)) / 2.0F);
+        renderTop = Math.round((height - (WINDOW_HEIGHT * uiScale)) / 2.0F);
+        left = 0;
+        top = 0;
 
         listPaneLeft = left + 10;
         listPaneTop = top + 18;
@@ -125,43 +137,57 @@ public class BrewersGuideScreen extends Screen {
     @Override
     public void onClose() {
         rememberViewState();
+        playLocalSound("item.book.page_turn", 0.8F, 0.85F);
         super.onClose();
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (clickGuideLink(mouseX, mouseY)) {
+        double localMouseX = toLocalX(mouseX);
+        double localMouseY = toLocalY(mouseY);
+        if (clickGuideLink(localMouseX, localMouseY)) {
             return true;
         }
-        if (clickSection(mouseX, mouseY)) {
+        if (clickSection(localMouseX, localMouseY)) {
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(localMouseX, localMouseY, button);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        double localMouseX = toLocalX(mouseX);
+        double localMouseY = toLocalY(mouseY);
         int listBottom = listTop + (VISIBLE_SECTIONS * ENTRY_HEIGHT);
-        if (mouseX >= listLeft && mouseX <= listLeft + listWidth && mouseY >= listTop && mouseY <= listBottom) {
+        if (localMouseX >= listLeft && localMouseX <= listLeft + listWidth && localMouseY >= listTop && localMouseY <= listBottom) {
             int delta = -(int) Math.signum(scrollY);
             if (delta != 0) {
                 moveSelection(delta);
             }
             return true;
         }
-        if (mouseX >= detailsPaneLeft + 4 && mouseX <= detailsPaneLeft + detailsPaneWidth - 4
-                && mouseY >= detailsTop && mouseY <= detailsContentBottom) {
+        if (localMouseX >= detailsPaneLeft + 4 && localMouseX <= detailsPaneLeft + detailsPaneWidth - 4
+                && localMouseY >= detailsTop && localMouseY <= detailsContentBottom) {
             detailsScroll = Mth.clamp(detailsScroll - ((int) Math.signum(scrollY) * 10), 0, maxDetailsScroll(selectedSection()));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(localMouseX, localMouseY, scrollX, scrollY);
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (!openSoundPlayed) {
+            playLocalSound("item.book.page_turn", 0.9F, 1.15F);
+            openSoundPlayed = true;
+        }
+        double localMouseX = toLocalX(mouseX);
+        double localMouseY = toLocalY(mouseY);
         renderBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         guiGraphics.fill(0, 0, width, height, 0x88000000);
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(renderLeft, renderTop, 0.0F);
+        guiGraphics.pose().scale(uiScale, uiScale, 1.0F);
         drawFrame(guiGraphics, left, top, WINDOW_WIDTH, WINDOW_HEIGHT, OUTER, ACCENT);
         drawFrame(guiGraphics, listPaneLeft, listPaneTop, listPaneWidth, listPaneHeight, PANEL_DARK, PANEL_LIGHT);
         drawFrame(guiGraphics, detailsPaneLeft, detailsPaneTop, detailsPaneWidth, detailsPaneHeight, PANEL_DARK, PANEL_LIGHT);
@@ -175,15 +201,21 @@ public class BrewersGuideScreen extends Screen {
         Component progress = Component.translatable("createpop.brewers_guide.progress", selectedIndex + 1, sections.size());
         guiGraphics.drawString(font, progress, listLeft + listWidth - font.width(progress), listTop - 12, MUTED, false);
 
-        renderSectionList(guiGraphics, mouseX, mouseY);
-        renderSectionDetails(guiGraphics, mouseX, mouseY);
+        renderSectionList(guiGraphics, (int) Math.round(localMouseX), (int) Math.round(localMouseY));
+        renderSectionDetails(guiGraphics, (int) Math.round(localMouseX), (int) Math.round(localMouseY));
+
+        guiGraphics.pose().popPose();
 
         if (hoveredLink != null) {
             guiGraphics.renderComponentTooltip(font, hoveredLinkTooltip(), mouseX, mouseY);
         }
 
         for (net.minecraft.client.gui.components.Renderable renderable : this.renderables) {
-            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(renderLeft, renderTop, 0.0F);
+            guiGraphics.pose().scale(uiScale, uiScale, 1.0F);
+            renderable.render(guiGraphics, (int) Math.round(localMouseX), (int) Math.round(localMouseY), partialTick);
+            guiGraphics.pose().popPose();
         }
     }
 
@@ -217,7 +249,7 @@ public class BrewersGuideScreen extends Screen {
             return;
         }
 
-        guiGraphics.enableScissor(detailsPaneLeft + 3, detailsTop, detailsPaneLeft + detailsPaneWidth - 3, detailsContentBottom);
+        guiGraphics.enableScissor(toScreenX(detailsPaneLeft + 3), toScreenY(detailsTop), toScreenX(detailsPaneLeft + detailsPaneWidth - 3), toScreenY(detailsContentBottom));
 
         int y = detailsTop - detailsScroll;
         y = drawWrappedShadowed(guiGraphics, section.title(), detailsLeft, y, detailsWidth, section.accentColor());
@@ -310,6 +342,7 @@ public class BrewersGuideScreen extends Screen {
         }
         selectedIndex = index;
         detailsScroll = 0;
+        playLocalSound("item.book.page_turn", 0.9F, 1.0F);
         init();
         return true;
     }
@@ -339,6 +372,7 @@ public class BrewersGuideScreen extends Screen {
             return;
         }
         listScroll = nextScroll;
+        playLocalSound("item.book.page_turn", 0.75F, 1.0F);
         init();
     }
 
@@ -357,6 +391,7 @@ public class BrewersGuideScreen extends Screen {
         } else if (selectedIndex >= listScroll + VISIBLE_SECTIONS) {
             listScroll = selectedIndex - VISIBLE_SECTIONS + 1;
         }
+        playLocalSound("item.book.page_turn", 0.9F, 1.0F);
         init();
     }
 
@@ -698,6 +733,29 @@ public class BrewersGuideScreen extends Screen {
 
     private boolean isPointInside(double mouseX, double mouseY, int left, int top, int right, int bottom) {
         return mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom;
+    }
+
+    private void playLocalSound(String soundId, float volume, float pitch) {
+        if (minecraft == null || minecraft.player == null) {
+            return;
+        }
+        minecraft.player.playSound(SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace(soundId)), volume, pitch);
+    }
+
+    private double toLocalX(double screenX) {
+        return (screenX - renderLeft) / uiScale;
+    }
+
+    private double toLocalY(double screenY) {
+        return (screenY - renderTop) / uiScale;
+    }
+
+    private int toScreenX(int localX) {
+        return renderLeft + Math.round(localX * uiScale);
+    }
+
+    private int toScreenY(int localY) {
+        return renderTop + Math.round(localY * uiScale);
     }
 
     @Override

@@ -25,7 +25,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
@@ -73,6 +72,7 @@ import java.util.TreeSet;
 @JeiPlugin
 public class CreatePopJeiPlugin implements IModPlugin {
     private static IJeiRuntime ACTIVE_RUNTIME;
+    private static IPlatformFluidHelper<?> ACTIVE_PLATFORM_FLUID_HELPER;
 
     private static final ResourceLocation PLUGIN_ID =
             ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei_plugin");
@@ -102,6 +102,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
     @Override
     public <T> void registerFluidSubtypes(ISubtypeRegistration registration, IPlatformFluidHelper<T> helper) {
         this.platformFluidHelper = helper;
+        ACTIVE_PLATFORM_FLUID_HELPER = helper;
         registration.registerSubtypeInterpreter(ModFluids.SODA_BOTTLE.get(), sodaItemSubtypeInterpreter());
         registration.registerSubtypeInterpreter(ModFluids.SODA_BUCKET.get(), sodaItemSubtypeInterpreter());
         registration.registerSubtypeInterpreter(helper.getFluidIngredientType(), ModFluids.SODA.get(), sodaFluidSubtypeInterpreter());
@@ -176,6 +177,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
         clearInjectedRecipes();
         this.jeiRuntime = null;
         ACTIVE_RUNTIME = null;
+        ACTIVE_PLATFORM_FLUID_HELPER = null;
         this.lastForceUnlockAll = null;
         this.lastUnlockSnapshot = null;
     }
@@ -192,6 +194,28 @@ public class CreatePopJeiPlugin implements IModPlugin {
     @SuppressWarnings("unused")
     public static boolean showItemUses(ItemStack stack) {
         return showItemWithRole(stack, RecipeIngredientRole.INPUT);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    public static boolean showSodaRecipe(SodaData data) {
+        if (ACTIVE_RUNTIME == null || ACTIVE_PLATFORM_FLUID_HELPER == null) {
+            return false;
+        }
+        IPlatformFluidHelper<Object> helper = (IPlatformFluidHelper<Object>) ACTIVE_PLATFORM_FLUID_HELPER;
+        DataComponentPatch patch = DataComponentPatch.builder()
+                .set(ModDataComponents.SODA_DATA.get(), data)
+                .build();
+        Object ingredient = helper.create(
+                BuiltInRegistries.FLUID.wrapAsHolder(ModFluids.SODA.get()),
+                DynamicSodaMixing.DRINK_AMOUNT,
+                patch
+        );
+        ACTIVE_RUNTIME.getRecipesGui().show(
+                ACTIVE_RUNTIME.getJeiHelpers()
+                        .getFocusFactory()
+                        .createFocus(RecipeIngredientRole.OUTPUT, helper.getFluidIngredientType(), ingredient)
+        );
+        return true;
     }
 
     private static boolean showItemWithRole(ItemStack stack, RecipeIngredientRole role) {

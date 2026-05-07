@@ -1,6 +1,9 @@
 package org.neonalig.createpop.event;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.NeoForge;
@@ -65,6 +68,10 @@ public final class ModCommonEvents {
             player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_added", learnedNames.size()), true);
         } else {
             player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.scanned_none"), true);
+        }
+
+        if (!learnedNames.isEmpty()) {
+            player.level().playSound(null, player.blockPosition(), SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace("entity.villager.work_cartographer")), SoundSource.PLAYERS, 0.8F, 1.0F);
         }
     }
 

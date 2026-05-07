@@ -12,6 +12,9 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.WrittenBookItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.network.OpenBrewersNotebookPayload;
@@ -36,6 +39,7 @@ public class BrewersNotebookItem extends WrittenBookItem {
             int added = BrewingDiscoveryManager.writePlayerRecipesToNotebook(player, stack);
             if (added > 0) {
                 player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.saved_added", added), true);
+                level.playSound(null, player.blockPosition(), SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace("entity.villager.work_cartographer")), SoundSource.PLAYERS, 0.8F, 1.0F);
             } else {
                 player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.saved_none"), true);
             }

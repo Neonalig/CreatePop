@@ -6,6 +6,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.neonalig.createpop.component.BrewersNotebookData;
@@ -74,6 +76,16 @@ public class BrewersNotebookScreen extends Screen {
     private int noteEditorsTop;
     private int noteEditorsLeft;
     private int noteEditorsWidth;
+    private float uiScale = 1.0F;
+    private int renderLeft;
+    private int renderTop;
+    private boolean openSoundPlayed;
+    private boolean jeiRecipeLinksAvailable;
+    private int titleLinkLeft;
+    private int titleLinkTop;
+    private int titleLinkRight;
+    private int titleLinkBottom;
+    private boolean hoveredTitleLink;
 
     private Button saveButton;
     private Button closeButton;
@@ -93,9 +105,16 @@ public class BrewersNotebookScreen extends Screen {
         syncVisibleNoteEditors();
         clearWidgets();
         noteEditors.clear();
+        jeiRecipeLinksAvailable = queryJeiRecipeLinksAvailable();
 
-        left = (width - WINDOW_WIDTH) / 2;
-        top = (height - WINDOW_HEIGHT) / 2;
+        uiScale = Math.min(1.0F, Math.min((width - 8.0F) / WINDOW_WIDTH, (height - 8.0F) / WINDOW_HEIGHT));
+        if (!Float.isFinite(uiScale) || uiScale <= 0.0F) {
+            uiScale = 1.0F;
+        }
+        renderLeft = Math.round((width - (WINDOW_WIDTH * uiScale)) / 2.0F);
+        renderTop = Math.round((height - (WINDOW_HEIGHT * uiScale)) / 2.0F);
+        left = 0;
+        top = 0;
         listPaneLeft = left + 10;
         listPaneTop = top + 18;
         listPaneWidth = 136;
@@ -335,6 +354,7 @@ public class BrewersNotebookScreen extends Screen {
             ensureEditableCapacity((target + 1) * NOTE_LINES_PER_PAGE);
         }
         notePage = Mth.clamp(target, 0, MAX_NOTE_PAGES - 1);
+        playLocalSound("item.book.page_turn", 0.9F, 1.0F);
         init();
     }
 
@@ -353,6 +373,7 @@ public class BrewersNotebookScreen extends Screen {
         replaceEntry(new BrewersNotebookData.Entry(selected.key(), selected.data(), selected.name(), selected.ingredients(), note));
         loadedNoteKey = selected.key();
         confirmingDelete = false;
+        playLocalSound("entity.villager.work_cartographer", 0.8F, 1.0F);
         rebuildFilter(searchBox.getValue());
         init();
     }
@@ -389,6 +410,7 @@ public class BrewersNotebookScreen extends Screen {
         loadedNoteKey = null;
         detailsScroll = 0;
         confirmingDelete = false;
+        playLocalSound("entity.villager.work_cartographer", 0.7F, 0.85F);
         rebuildFilter(searchBox.getValue());
         init();
     }
@@ -430,10 +452,15 @@ public class BrewersNotebookScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (clickEntry(mouseX, mouseY)) {
+        double localMouseX = toLocalX(mouseX);
+        double localMouseY = toLocalY(mouseY);
+        if (clickTitleRecipeLink(localMouseX, localMouseY)) {
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        if (clickEntry(localMouseX, localMouseY)) {
+            return true;
+        }
+        return super.mouseClicked(localMouseX, localMouseY, button);
     }
 
     private boolean clickEntry(double mouseX, double mouseY) {
@@ -453,14 +480,17 @@ public class BrewersNotebookScreen extends Screen {
         notePage = 0;
         detailsScroll = 0;
         confirmingDelete = false;
+        playLocalSound("item.book.page_turn", 0.9F, 1.0F);
         init();
         return true;
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        double localMouseX = toLocalX(mouseX);
+        double localMouseY = toLocalY(mouseY);
         int listBottom = listTop + (VISIBLE_ENTRIES * ENTRY_HEIGHT);
-        if (mouseX >= listLeft && mouseX <= listLeft + listWidth && mouseY >= listTop && mouseY <= listBottom) {
+        if (localMouseX >= listLeft && localMouseX <= listLeft + listWidth && localMouseY >= listTop && localMouseY <= listBottom) {
             int delta = -(int) Math.signum(scrollY);
             if (delta != 0) {
                 moveListSelection(delta);
@@ -469,18 +499,25 @@ public class BrewersNotebookScreen extends Screen {
         }
         BrewersNotebookData.Entry selected = selectedEntry();
         if (selected != null
-                && mouseX >= detailsPaneLeft + 4
-                && mouseX <= detailsPaneLeft + detailsPaneWidth - 4
-                && mouseY >= detailsTop
-                && mouseY <= detailsContentBottom) {
+                && localMouseX >= detailsPaneLeft + 4
+                && localMouseX <= detailsPaneLeft + detailsPaneWidth - 4
+                && localMouseY >= detailsTop
+                && localMouseY <= detailsContentBottom) {
             detailsScroll = Mth.clamp(detailsScroll - ((int) Math.signum(scrollY) * 10), 0, maxDetailsScroll(selected));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(localMouseX, localMouseY, scrollX, scrollY);
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (!openSoundPlayed) {
+            playLocalSound("item.book.page_turn", 0.9F, 1.15F);
+            openSoundPlayed = true;
+        }
+        double localMouseX = toLocalX(mouseX);
+        double localMouseY = toLocalY(mouseY);
+
         // 1. Render the blurred world background once, then draw our opaque panels on top.
         //    We must NOT call super.render() after our panels because Screen.render() calls
         //    renderBackground() internally, which would redraw the blur over everything.
@@ -488,6 +525,9 @@ public class BrewersNotebookScreen extends Screen {
 
         // 2. Draw opaque window chrome
         guiGraphics.fill(0, 0, width, height, 0x88000000);
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(renderLeft, renderTop, 0.0F);
+        guiGraphics.pose().scale(uiScale, uiScale, 1.0F);
         drawFrame(guiGraphics, left, top, WINDOW_WIDTH, WINDOW_HEIGHT, OUTER, ACCENT);
         drawFrame(guiGraphics, listPaneLeft, listPaneTop, listPaneWidth, listPaneHeight, PANEL_DARK, PANEL_LIGHT);
         drawFrame(guiGraphics, detailsPaneLeft, detailsPaneTop, detailsPaneWidth, detailsPaneHeight, PANEL_DARK, PANEL_LIGHT);
@@ -503,12 +543,17 @@ public class BrewersNotebookScreen extends Screen {
         guiGraphics.drawString(font, Component.translatable("createpop.brewers_notebook.recipes"), listLeft, listTop - 12, INK, false);
         guiGraphics.drawString(font, results, listLeft + listWidth - font.width(results), listTop - 12, MUTED, false);
 
-        renderEntryList(guiGraphics, mouseX, mouseY);
-        renderDetails(guiGraphics);
+        renderEntryList(guiGraphics, (int) Math.round(localMouseX), (int) Math.round(localMouseY));
+        renderDetails(guiGraphics, (int) Math.round(localMouseX), (int) Math.round(localMouseY));
 
         // 3. Render widgets (buttons, editboxes) on top of panels
         for (net.minecraft.client.gui.components.Renderable renderable : this.renderables) {
-            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+            renderable.render(guiGraphics, (int) Math.round(localMouseX), (int) Math.round(localMouseY), partialTick);
+        }
+        guiGraphics.pose().popPose();
+
+        if (hoveredTitleLink) {
+            guiGraphics.renderTooltip(font, Component.translatable("createpop.brewers_guide.link_hint.recipes"), mouseX, mouseY);
         }
     }
 
@@ -540,8 +585,13 @@ public class BrewersNotebookScreen extends Screen {
         }
     }
 
-    private void renderDetails(GuiGraphics guiGraphics) {
+    private void renderDetails(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         BrewersNotebookData.Entry selected = selectedEntry();
+        hoveredTitleLink = false;
+        titleLinkLeft = 0;
+        titleLinkTop = 0;
+        titleLinkRight = 0;
+        titleLinkBottom = 0;
         if (selected == null) {
             guiGraphics.drawString(font, Component.translatable("createpop.brewers_notebook.notes"), detailsLeft, notesHeaderY, INK, false);
             guiGraphics.fill(noteBoxLeft, noteBoxTop, noteBoxLeft + noteBoxWidth, noteBoxTop + (NOTE_LINES_PER_PAGE * 18) + 8, 0x30FFFFFF);
@@ -549,11 +599,19 @@ public class BrewersNotebookScreen extends Screen {
             return;
         }
 
-        guiGraphics.enableScissor(detailsPaneLeft + 3, detailsTop, detailsPaneLeft + detailsPaneWidth - 3, detailsContentBottom);
+        guiGraphics.enableScissor(toScreenX(detailsPaneLeft + 3), toScreenY(detailsTop), toScreenX(detailsPaneLeft + detailsPaneWidth - 3), toScreenY(detailsContentBottom));
 
         int y = detailsTop - detailsScroll;
+        titleLinkLeft = detailsLeft;
+        titleLinkTop = y;
         y = drawWrappedShadowed(guiGraphics, Component.literal(selected.name()).withStyle(style -> style.withColor(selected.data().rgbColor())),
                 detailsLeft, y, detailsWidth, selected.data().rgbColor());
+        titleLinkRight = detailsLeft + Math.min(detailsWidth, font.width(selected.name()));
+        titleLinkBottom = y;
+        hoveredTitleLink = jeiRecipeLinksAvailable && isPointInside(mouseX, mouseY, titleLinkLeft, titleLinkTop, titleLinkRight, titleLinkBottom);
+        if (hoveredTitleLink) {
+            guiGraphics.fill(titleLinkLeft, titleLinkBottom, Math.min(detailsLeft + detailsWidth, titleLinkLeft + font.width(selected.name())), titleLinkBottom + 1, selected.data().rgbColor());
+        }
 
         guiGraphics.drawString(font,
                 Component.translatable("createpop.brewers_notebook.instability_line", String.format(Locale.ROOT, "%.2f", selected.data().instability())),
@@ -601,6 +659,7 @@ public class BrewersNotebookScreen extends Screen {
             return;
         }
         listScroll = nextScroll;
+        playLocalSound("item.book.page_turn", 0.75F, 1.0F);
         init();
     }
 
@@ -628,7 +687,23 @@ public class BrewersNotebookScreen extends Screen {
         } else if (targetIndex >= listScroll + VISIBLE_ENTRIES) {
             listScroll = targetIndex - VISIBLE_ENTRIES + 1;
         }
+        playLocalSound("item.book.page_turn", 0.9F, 1.0F);
         init();
+    }
+
+    private boolean clickTitleRecipeLink(double mouseX, double mouseY) {
+        BrewersNotebookData.Entry selected = selectedEntry();
+        if (!jeiRecipeLinksAvailable || selected == null) {
+            return false;
+        }
+        if (!isPointInside(mouseX, mouseY, titleLinkLeft, titleLinkTop, titleLinkRight, titleLinkBottom)) {
+            return false;
+        }
+        if (minecraft != null) {
+            minecraft.execute(() -> openSodaRecipeInJei(selected.data()));
+            return true;
+        }
+        return false;
     }
 
     private int selectedFilteredIndex() {
@@ -699,6 +774,57 @@ public class BrewersNotebookScreen extends Screen {
         int thumbTop = trackTop + (thumbTravel * detailsScroll / maxScroll);
         guiGraphics.fill(trackLeft, thumbTop, trackLeft + 4, thumbTop + thumbHeight, ACCENT);
         guiGraphics.fill(trackLeft, thumbTop, trackLeft + 4, thumbTop + 1, 0x55FFFFFF);
+    }
+
+    @Override
+    public void onClose() {
+        playLocalSound("item.book.page_turn", 0.8F, 0.85F);
+        super.onClose();
+    }
+
+    private boolean queryJeiRecipeLinksAvailable() {
+        try {
+            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
+            Object result = pluginClass.getMethod("isRuntimeAvailable").invoke(null);
+            return Boolean.TRUE.equals(result);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private void openSodaRecipeInJei(org.neonalig.createpop.component.SodaData data) {
+        try {
+            Class<?> pluginClass = Class.forName("org.neonalig.createpop.compat.jei.CreatePopJeiPlugin");
+            pluginClass.getMethod("showSodaRecipe", org.neonalig.createpop.component.SodaData.class).invoke(null, data);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void playLocalSound(String soundId, float volume, float pitch) {
+        if (minecraft == null || minecraft.player == null) {
+            return;
+        }
+        minecraft.player.playSound(SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace(soundId)), volume, pitch);
+    }
+
+    private double toLocalX(double screenX) {
+        return (screenX - renderLeft) / uiScale;
+    }
+
+    private double toLocalY(double screenY) {
+        return (screenY - renderTop) / uiScale;
+    }
+
+    private int toScreenX(int localX) {
+        return renderLeft + Math.round(localX * uiScale);
+    }
+
+    private int toScreenY(int localY) {
+        return renderTop + Math.round(localY * uiScale);
+    }
+
+    private boolean isPointInside(double mouseX, double mouseY, int minX, int minY, int maxX, int maxY) {
+        return mouseX >= minX && mouseX <= maxX && mouseY >= minY && mouseY <= maxY;
     }
 
     private boolean hasPendingChanges() {
