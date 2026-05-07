@@ -27,6 +27,7 @@ public class BrewersNotebookScreen extends Screen {
     private static final int INK = 0xFF2D2118;
     private static final int MUTED = 0xFF6E5B43;
     private static final int SOFT_SHADOW = 0x66000000;
+    private static final int TITLE_SHADOW = 0xCC000000;
     private static final int SELECTION = 0xC46B8E23;
     private static final int HOVER = 0x6A8A5A30;
     private static final int ENTRY_HEIGHT = 20;
@@ -105,7 +106,8 @@ public class BrewersNotebookScreen extends Screen {
         listWidth = listContentRight - listLeft;
         int searchLabelY = listPaneTop + 8;
         int searchBoxY = searchLabelY + 12;
-        int listHeaderY = searchBoxY + 24;
+        int searchBoxHeight = 14;
+        int listHeaderY = searchBoxY + searchBoxHeight + 8;
         listTop = listHeaderY + 12;
 
         detailsPaneLeft = listPaneLeft + listPaneWidth + 8;
@@ -133,7 +135,7 @@ public class BrewersNotebookScreen extends Screen {
         String existingSearch = searchBox == null ? "" : searchBox.getValue();
         boolean hasSearch = !existingSearch.isBlank();
         int searchBoxRight = hasSearch ? listButtonX - 4 : listPaneLeft + listPaneWidth - 8;
-        searchBox = new EditBox(font, listLeft, searchBoxY, searchBoxRight - listLeft, 18,
+        searchBox = new EditBox(font, listLeft, searchBoxY, searchBoxRight - listLeft, searchBoxHeight,
                 Component.translatable("createpop.brewers_notebook.search"));
         searchBox.setValue(existingSearch);
         searchBox.setMaxLength(50);
@@ -145,7 +147,7 @@ public class BrewersNotebookScreen extends Screen {
 
         if (hasSearch) {
             addRenderableWidget(Button.builder(Component.literal("×"), button -> searchBox.setValue(""))
-                    .bounds(listButtonX, searchBoxY, 18, 18)
+                    .bounds(listButtonX, searchBoxY - 1, 16, 16)
                     .build());
         }
 
@@ -175,11 +177,11 @@ public class BrewersNotebookScreen extends Screen {
             addRenderableWidget(confirmLabel);
 
             addRenderableWidget(Button.builder(Component.translatable("createpop.brewers_notebook.delete_entry"), button -> deleteSelectedEntry())
-                    .bounds(left + 132, footerButtonY, 108, 20)
+                    .bounds(left + 246, footerButtonY, 108, 20)
                     .build());
 
             addRenderableWidget(Button.builder(Component.literal("Cancel"), button -> cancelDeleteConfirmation())
-                    .bounds(left + 246, footerButtonY, 108, 20)
+                    .bounds(left + 132, footerButtonY, 108, 20)
                     .build());
         } else {
             saveButton = Button.builder(Component.translatable("createpop.brewers_notebook.save_note"), button -> saveSelectedNote())
@@ -512,7 +514,7 @@ public class BrewersNotebookScreen extends Screen {
 
     private void renderEntryList(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         if (filteredEntries.isEmpty()) {
-            drawWrapped(guiGraphics, Component.translatable("createpop.brewers_notebook.no_results"), listLeft, listTop + 8, listWidth, MUTED);
+            drawWrappedMuted(guiGraphics, Component.translatable("createpop.brewers_notebook.no_results"), listLeft, listTop + 8, listWidth);
             return;
         }
 
@@ -543,7 +545,7 @@ public class BrewersNotebookScreen extends Screen {
         if (selected == null) {
             guiGraphics.drawString(font, Component.translatable("createpop.brewers_notebook.notes"), detailsLeft, notesHeaderY, INK, false);
             guiGraphics.fill(noteBoxLeft, noteBoxTop, noteBoxLeft + noteBoxWidth, noteBoxTop + (NOTE_LINES_PER_PAGE * 18) + 8, 0x30FFFFFF);
-            drawWrapped(guiGraphics, Component.translatable("createpop.brewers_notebook.empty_selection"), detailsLeft, detailsTop + 12, detailsWidth, MUTED);
+            drawWrappedMuted(guiGraphics, Component.translatable("createpop.brewers_notebook.empty_selection"), detailsLeft, detailsTop + 12, detailsWidth);
             return;
         }
 
@@ -558,24 +560,13 @@ public class BrewersNotebookScreen extends Screen {
                 detailsLeft, y + 4, 0xFFB97638, false);
         y += 18;
 
-        guiGraphics.drawString(font, Component.translatable("createpop.brewers_notebook.ingredients"), detailsLeft, y, INK, false);
-        y += 12;
-        if (selected.ingredients().isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("createpop.brewers_notebook.no_ingredients"), detailsLeft + 6, y, MUTED, false);
-            y += 12;
-        } else {
-            for (String ingredient : selected.ingredients()) {
-                y = drawWrapped(guiGraphics, Component.literal("• " + ingredient), detailsLeft + 4, y, detailsWidth - 8, INK);
-            }
-        }
-
         guiGraphics.drawString(font, Component.translatable("createpop.brewers_notebook.effects"), detailsLeft, y + 2, INK, false);
         y += 14;
         if (selected.data().effects().isEmpty()) {
             guiGraphics.drawString(font, Component.translatable("createpop.soda.tooltip.no_effects"), detailsLeft + 6, y, MUTED, false);
         } else {
             for (var effect : selected.data().effects()) {
-                y = drawWrapped(guiGraphics, SodaTextHelper.formatEffect(effect).copy().withStyle(ChatFormatting.DARK_GRAY), detailsLeft + 4, y, detailsWidth - 8, MUTED);
+                y = drawWrappedMuted(guiGraphics, SodaTextHelper.formatEffect(effect).copy().withStyle(ChatFormatting.DARK_GRAY), detailsLeft + 4, y, detailsWidth - 8);
             }
         }
 
@@ -654,14 +645,6 @@ public class BrewersNotebookScreen extends Screen {
     private int measureDetailsHeight(BrewersNotebookData.Entry entry) {
         int height = measureWrappedHeight(Component.literal(entry.name()), detailsWidth);
         height += 18;
-        height += 12;
-        if (entry.ingredients().isEmpty()) {
-            height += 12;
-        } else {
-            for (String ingredient : entry.ingredients()) {
-                height += measureWrappedHeight(Component.literal("• " + ingredient), detailsWidth - 8);
-            }
-        }
         height += 14;
         if (entry.data().effects().isEmpty()) {
             height += 10;
@@ -677,10 +660,10 @@ public class BrewersNotebookScreen extends Screen {
         return font.split(text, maxWidth).size() * 10;
     }
 
-    private int drawWrapped(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color) {
+    private int drawWrappedMuted(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth) {
         List<net.minecraft.util.FormattedCharSequence> lines = font.split(text, maxWidth);
         for (net.minecraft.util.FormattedCharSequence line : lines) {
-            guiGraphics.drawString(font, line, x, y, color, false);
+            guiGraphics.drawString(font, line, x, y, MUTED, false);
             y += 10;
         }
         return y;
@@ -689,7 +672,7 @@ public class BrewersNotebookScreen extends Screen {
     private int drawWrappedShadowed(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color) {
         List<net.minecraft.util.FormattedCharSequence> lines = font.split(text, maxWidth);
         for (net.minecraft.util.FormattedCharSequence line : lines) {
-            guiGraphics.drawString(font, line, x + 1, y + 1, SOFT_SHADOW, false);
+            guiGraphics.drawString(font, line, x + 1, y + 1, TITLE_SHADOW, false);
             guiGraphics.drawString(font, line, x, y, color, false);
             y += 10;
         }

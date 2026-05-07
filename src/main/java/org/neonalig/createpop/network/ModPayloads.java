@@ -21,6 +21,7 @@ public final class ModPayloads {
         PayloadRegistrar registrar = event.registrar("1");
         registrar.playToClient(OpenSodaNamePromptPayload.TYPE, OpenSodaNamePromptPayload.STREAM_CODEC, ModPayloads::handleOpenPrompt);
         registrar.playToClient(OpenBrewersNotebookPayload.TYPE, OpenBrewersNotebookPayload.STREAM_CODEC, ModPayloads::handleOpenNotebook);
+        registrar.playToClient(OpenBrewersGuidePayload.TYPE, OpenBrewersGuidePayload.STREAM_CODEC, ModPayloads::handleOpenGuide);
         registrar.playToServer(SubmitSodaNamePayload.TYPE, SubmitSodaNamePayload.STREAM_CODEC, ModPayloads::handleSubmitName);
         registrar.playToServer(RemoveNotebookEntryPayload.TYPE, RemoveNotebookEntryPayload.STREAM_CODEC, ModPayloads::handleRemoveEntry);
         registrar.playToServer(UpdateNotebookNotePayload.TYPE, UpdateNotebookNotePayload.STREAM_CODEC, ModPayloads::handleUpdateNote);
@@ -50,6 +51,19 @@ public final class ModPayloads {
                 Class<?> screenClass = Class.forName("org.neonalig.createpop.client.BrewersNotebookScreen");
                 Object screen = screenClass.getConstructor(BrewersNotebookData.class, boolean.class)
                         .newInstance(payload.notebookData(), payload.mainHand());
+                if (screen instanceof Screen gui) {
+                    Minecraft.getInstance().setScreen(gui);
+                }
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private static void handleOpenGuide(OpenBrewersGuidePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                Class<?> screenClass = Class.forName("org.neonalig.createpop.client.BrewersGuideScreen");
+                Object screen = screenClass.getConstructor().newInstance();
                 if (screen instanceof Screen gui) {
                     Minecraft.getInstance().setScreen(gui);
                 }
