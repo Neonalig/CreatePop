@@ -95,21 +95,39 @@ public class CreatePopJeiPlugin implements IModPlugin {
         this.platformFluidHelper = helper;
         registration.registerSubtypeInterpreter(ModFluids.SODA_BOTTLE.get(), sodaItemSubtypeInterpreter());
         registration.registerSubtypeInterpreter(ModFluids.SODA_BUCKET.get(), sodaItemSubtypeInterpreter());
-        // Intentionally do not subtype the soda fluid ingredient in JEI.
-        // This keeps hint recipes discoverable from the main soda focus instead of
-        // filtering by exact instability/effect component payload.
+        registration.registerSubtypeInterpreter(helper.getFluidIngredientType(), ModFluids.SODA.get(), sodaFluidSubtypeInterpreter());
     }
 
     private static ISubtypeInterpreter<ItemStack> sodaItemSubtypeInterpreter() {
         return new ISubtypeInterpreter<>() {
             @Override
             public Object getSubtypeData(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
-                return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
             }
 
             @Override
             public String getLegacyStringSubtypeInfo(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
-                return sodaSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+            }
+        };
+    }
+
+    private static <T> ISubtypeInterpreter<T> sodaFluidSubtypeInterpreter() {
+        return new ISubtypeInterpreter<>() {
+            @Override
+            public Object getSubtypeData(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
+                    return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                }
+                return "";
+            }
+
+            @Override
+            public String getLegacyStringSubtypeInfo(T ingredient, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                if (ingredient instanceof FluidStack stack && !stack.isEmpty()) {
+                    return sodaEffectsSubtypeKey(SodaFluidStackHelper.getSodaData(stack));
+                }
+                return "";
             }
         };
     }
@@ -437,7 +455,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
     }
 
     private static List<RecipeHolder<BasinRecipe>> buildStabilisationHintRecipes() {
-        float demoInstability = 0.40f;
+        float demoInstability = 1.0f;
         SodaData demoInput = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability);
         FluidStack unstable = sodaForJei(demoInput);
 
@@ -484,7 +502,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
     private static <T> void addStabilisationDemoIngredients(IExtraIngredientRegistration registration,
                                                              IPlatformFluidHelper<T> helper) {
-        float demoInstability = 0.40f;
+        float demoInstability = 1.0f;
         Map<String, SodaData> unique = new LinkedHashMap<>();
 
         SodaData inputDemo = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability);
@@ -520,6 +538,17 @@ public class CreatePopJeiPlugin implements IModPlugin {
         key.append("c=").append(data.color())
                 .append(";i=").append(data.instability())
                 .append(";e=");
+        for (MobEffectInstance effect : SodaEffectReducer.copyEffects(data.effects())) {
+            key.append(SodaEffectReducer.effectId(effect))
+                    .append('@').append(effect.getAmplifier())
+                    .append('@').append(effect.getDuration())
+                    .append('|');
+        }
+        return key.toString();
+    }
+
+    private static String sodaEffectsSubtypeKey(SodaData data) {
+        StringBuilder key = new StringBuilder("e=");
         for (MobEffectInstance effect : SodaEffectReducer.copyEffects(data.effects())) {
             key.append(SodaEffectReducer.effectId(effect))
                     .append('@').append(effect.getAmplifier())

@@ -10,6 +10,7 @@ import org.neonalig.createpop.component.SodaData;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 public class SodaFluidType extends FluidType {
     public SodaFluidType(Properties properties) {
@@ -33,17 +34,24 @@ public class SodaFluidType extends FluidType {
         SodaData data = SodaFluidStackHelper.getSodaData(stack);
         List<MobEffectInstance> effects = SodaEffectReducer.copyEffects(data.effects());
         effects.sort(Comparator.comparing(SodaEffectReducer::effectId));
-        if (effects.isEmpty()) {
-            return super.getDescription(stack);
-        }
 
         MutableComponent description = super.getDescription(stack).copy().append(Component.literal(" ("));
-        for (int i = 0; i < effects.size(); i++) {
-            if (i > 0) {
-                description.append(Component.literal(", "));
+        if (effects.isEmpty()) {
+            description.append(Component.translatable("createpop.soda.tooltip.no_effects"));
+        } else {
+            for (int i = 0; i < effects.size(); i++) {
+                if (i > 0) {
+                    description.append(Component.literal(", "));
+                }
+                description.append(SodaTextHelper.formatEffect(effects.get(i)));
             }
-            description.append(SodaTextHelper.formatEffect(effects.get(i)));
         }
+
+        description.append(Component.literal(", "));
+        description.append(Component.translatable(
+                "createpop.soda.tooltip.instability",
+                String.format(Locale.ROOT, "%.2f", data.instability())
+        ).withColor(0xFFB347));
         return description.append(Component.literal(")"));
     }
 }
