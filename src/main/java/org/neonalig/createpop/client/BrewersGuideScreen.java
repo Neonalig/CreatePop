@@ -239,6 +239,10 @@ public class BrewersGuideScreen extends Screen {
         int cursorY = y;
         for (GuideSegment segment : paragraph.segments()) {
             if (segment.linkAction() != LinkAction.NONE && !segment.item().isEmpty() && jeiLinksAvailable) {
+                if (cursorX > x && font.width(segment.text().getString()) > (x + maxWidth - cursorX)) {
+                    cursorX = x;
+                    cursorY += 10;
+                }
                 String remaining = segment.text().getString();
                 while (!remaining.isEmpty()) {
                     if (cursorX > x && cursorX >= x + maxWidth) {
@@ -545,7 +549,8 @@ public class BrewersGuideScreen extends Screen {
                                         itemUseLink(dye, tr("createpop.brewers_guide.links.dyes")),
                                         text("createpop.brewers_guide.section.rules.line2.suffix", INK)
                                 ),
-                                paragraph(text("createpop.brewers_guide.section.rules.line3", MUTED))
+                                paragraph(text("createpop.brewers_guide.section.rules.line3", INK)),
+                                paragraph(text("createpop.brewers_guide.section.rules.line4", MUTED))
                         )
                 ),
                 new Section(
@@ -563,7 +568,8 @@ public class BrewersGuideScreen extends Screen {
                                         itemUseLink(amethyst, amethyst.getHoverName()),
                                         text("createpop.brewers_guide.section.instability.line2.suffix", INK, percent(CreatePopConfig.amethystShardInstabilityReduction()))
                                 ),
-                                paragraph(text("createpop.brewers_guide.section.instability.line3", MUTED))
+                                paragraph(text("createpop.brewers_guide.section.instability.line3", MUTED)),
+                                paragraph(text("createpop.brewers_guide.section.instability.line4", MUTED))
                         )
                 ),
                 new Section(

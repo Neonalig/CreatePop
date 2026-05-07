@@ -514,6 +514,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
         FluidStack unstable = sodaForJei(demoInput);
 
         List<RecipeHolder<BasinRecipe>> recipes = new ArrayList<>();
+        List<PotionBaseData> potionBases = collectPotionBases();
 
         double acaciaReduction = CreatePopConfig.acaciaLogInstabilityReduction();
         if (acaciaReduction > 0.0) {
@@ -541,14 +542,17 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
         double amethystReduction = CreatePopConfig.amethystShardInstabilityReduction();
         if (amethystReduction > 0.0) {
-            SodaData output = SodaEffectReducer.purifyWithAmethyst(new SodaData(List.of(new MobEffectInstance(MobEffects.POISON, SodaEffectReducer.DEFAULT_DURATION / 2)), SodaData.DEFAULT_COLOR, demoInstability));
-            recipes.add(recipeHolder(
-                    ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/amethyst_shard"),
-                    sodaForJei(output),
-                    List.of(exactFluid(unstable)),
-                    HeatCondition.SUPERHEATED,
-                    Ingredient.of(Items.AMETHYST_SHARD)
-            ));
+            for (PotionBaseData base : potionBases) {
+                SodaData unstableBase = new SodaData(base.sodaData().effects(), base.sodaData().color(), Math.max(base.sodaData().instability(), 1.0f));
+                SodaData output = SodaEffectReducer.purifyWithAmethyst(unstableBase);
+                recipes.add(recipeHolder(
+                        ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/amethyst_shard_" + base.id().getPath()),
+                        sodaForJei(output),
+                        List.of(exactFluid(sodaForJei(unstableBase))),
+                        HeatCondition.SUPERHEATED,
+                        Ingredient.of(Items.AMETHYST_SHARD)
+                ));
+            }
         }
 
         return recipes;
@@ -569,6 +573,14 @@ public class CreatePopJeiPlugin implements IModPlugin {
         )) {
             if (reduction > 0.0) {
                 addSodaVariant(unique, new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) reduction)));
+            }
+        }
+
+        if (CreatePopConfig.amethystShardInstabilityReduction() > 0.0) {
+            for (PotionBaseData base : collectPotionBases()) {
+                SodaData unstableBase = new SodaData(base.sodaData().effects(), base.sodaData().color(), Math.max(base.sodaData().instability(), 1.0f));
+                addSodaVariant(unique, unstableBase);
+                addSodaVariant(unique, SodaEffectReducer.purifyWithAmethyst(unstableBase));
             }
         }
 

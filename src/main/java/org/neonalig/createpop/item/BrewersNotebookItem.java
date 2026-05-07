@@ -68,7 +68,7 @@ public class BrewersNotebookItem extends WrittenBookItem {
         super.appendHoverText(stack, context, tooltip, flag);
         tooltip.add(Component.translatable("item.createpop.brewers_notebook.entry_count", BrewingDiscoveryManager.notebookEntryCount(stack))
                 .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.createpop.brewers_notebook.tooltip_hint").withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("item.createpop.brewers_notebook.tooltip_hint", Component.keybind("key.sneak")).withStyle(ChatFormatting.DARK_GRAY));
     }
 
     private static boolean isTargetingBlock(Player player) {
