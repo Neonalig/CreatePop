@@ -1,20 +1,22 @@
 package org.neonalig.createpop.network;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
-import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.registry.ModItems;
 import org.neonalig.createpop.soda.BrewingDiscoveryManager;
-import org.neonalig.createpop.soda.SodaNameGenerator;
 
 public final class ModPayloads {
+    private static ClientScreens clientScreens = ClientScreens.NOOP;
+
     private ModPayloads() {
+    }
+
+    public static void registerClientScreens(ClientScreens clientScreens) {
+        ModPayloads.clientScreens = clientScreens;
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
@@ -28,48 +30,15 @@ public final class ModPayloads {
     }
 
     private static void handleOpenPrompt(OpenSodaNamePromptPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            try {
-                Class<?> screenClass = Class.forName("org.neonalig.createpop.client.SodaNamePromptScreen");
-                Object screen = screenClass.getConstructor(String.class, String.class, java.util.function.Supplier.class)
-                        .newInstance(
-                                payload.sodaKey(),
-                                payload.suggestedName(),
-                                (java.util.function.Supplier<String>) () -> SodaNameGenerator.randomName(net.minecraft.util.RandomSource.create())
-                        );
-                if (screen instanceof Screen gui) {
-                    Minecraft.getInstance().setScreen(gui);
-                }
-            } catch (Exception ignored) {
-            }
-        });
+        context.enqueueWork(() -> clientScreens.openPrompt(payload));
     }
 
     private static void handleOpenNotebook(OpenBrewersNotebookPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            try {
-                Class<?> screenClass = Class.forName("org.neonalig.createpop.client.BrewersNotebookScreen");
-                Object screen = screenClass.getConstructor(BrewersNotebookData.class, boolean.class)
-                        .newInstance(payload.notebookData(), payload.mainHand());
-                if (screen instanceof Screen gui) {
-                    Minecraft.getInstance().setScreen(gui);
-                }
-            } catch (Exception ignored) {
-            }
-        });
+        context.enqueueWork(() -> clientScreens.openNotebook(payload));
     }
 
     private static void handleOpenGuide(OpenBrewersGuidePayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            try {
-                Class<?> screenClass = Class.forName("org.neonalig.createpop.client.BrewersGuideScreen");
-                Object screen = screenClass.getConstructor().newInstance();
-                if (screen instanceof Screen gui) {
-                    Minecraft.getInstance().setScreen(gui);
-                }
-            } catch (Exception ignored) {
-            }
-        });
+        context.enqueueWork(clientScreens::openGuide);
     }
 
     private static void handleSubmitName(SubmitSodaNamePayload payload, IPayloadContext context) {
@@ -106,6 +75,28 @@ public final class ModPayloads {
         InteractionHand hand = mainHand ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
         ItemStack stack = player.getItemInHand(hand);
         return stack.is(ModItems.BREWERS_NOTEBOOK.get()) ? stack : ItemStack.EMPTY;
+    }
+
+    public interface ClientScreens {
+        ClientScreens NOOP = new ClientScreens() {
+            @Override
+            public void openPrompt(OpenSodaNamePromptPayload payload) {
+            }
+
+            @Override
+            public void openNotebook(OpenBrewersNotebookPayload payload) {
+            }
+
+            @Override
+            public void openGuide() {
+            }
+        };
+
+        void openPrompt(OpenSodaNamePromptPayload payload);
+
+        void openNotebook(OpenBrewersNotebookPayload payload);
+
+        void openGuide();
     }
 }
 
