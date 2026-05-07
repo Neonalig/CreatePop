@@ -1,0 +1,31 @@
+﻿name: Compatibility Report
+description: Report compatibility issues with other mods
+title: "[Compat]: "
+labels: [compatibility]
+body:
+  - type: input
+    id: createpop_version
+    attributes:
+      label: "Create: Pop version"
+    validations:
+      required: true
+  - type: input
+    id: other_mod
+    attributes:
+      label: Other mod name + version
+    validations:
+      required: true
+  - type: textarea
+    id: conflict
+    attributes:
+      label: Conflict description
+      description: Include what breaks (recipes, data, UI, crashes).
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+

@@ -1,0 +1,57 @@
+﻿name: Bug Report
+description: "Report a reproducible Create: Pop bug"
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: input
+    id: mod_version
+    attributes:
+      label: "Create: Pop version"
+      placeholder: 0.1.0+1.21.1
+    validations:
+      required: true
+  - type: input
+    id: mc_version
+    attributes:
+      label: Minecraft version
+      placeholder: 1.21.1
+    validations:
+      required: true
+  - type: input
+    id: neoforge_version
+    attributes:
+      label: NeoForge version
+      placeholder: 21.1.x
+    validations:
+      required: true
+  - type: input
+    id: create_version
+    attributes:
+      label: Create version
+      placeholder: 6.0.8-168
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / crash report
+      description: Paste relevant sections from latest.log or crash report.
+

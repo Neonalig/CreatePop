@@ -1,0 +1,12 @@
+﻿name: Build Dummy
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Dummy workflow placeholder for branch protection compatibility."
+

@@ -1,0 +1,35 @@
+﻿name: Feature Request
+description: "Suggest an improvement for Create: Pop"
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Brewing mechanics
+        - Instability/stabilisation
+        - Discovery/notebook UX
+        - JEI integration
+        - Config/admin controls
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+

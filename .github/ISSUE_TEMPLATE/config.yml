@@ -1,0 +1,12 @@
+﻿blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting Wiki
+    url: https://github.com/Neonalig/CreatePop/wiki/Troubleshooting
+    about: Check common setup and gameplay issues.
+  - name: Configuration Wiki
+    url: https://github.com/Neonalig/CreatePop/wiki/Configuration
+    about: Read server config and JEI unlock controls.
+  - name: Discussions
+    url: https://github.com/Neonalig/CreatePop/discussions
+    about: Ask questions or share ideas.
+
