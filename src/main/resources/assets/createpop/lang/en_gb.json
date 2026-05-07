@@ -1,0 +1,10 @@
+﻿{
+  "block.createpop.carbonated_water": "Sparkling Water",
+  "item.createpop.carbonated_water_bucket": "Sparkling Water Bucket",
+  "fluid_type.createpop.carbonated_water": "Sparkling Water",
+  "block.createpop.soda": "Fizzy Drink",
+  "item.createpop.soda_bucket": "Fizzy Drink Bucket",
+  "item.createpop.soda_bottle": "Bottle of Fizzy Drink",
+  "fluid_type.createpop.soda": "Fizzy Drink"
+}
+

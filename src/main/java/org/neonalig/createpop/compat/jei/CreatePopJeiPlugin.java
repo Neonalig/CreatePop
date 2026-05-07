@@ -179,7 +179,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
                 BuiltInRegistries.FLUID.wrapAsHolder(ModFluids.SODA.get()), 1000L,
                 DataComponentPatch.EMPTY);
         registration.addAliases(fluidType, soda,
-                List.of("Soda", "pop", "fizzy drink", "alchemical soda"));
+                List.of("Soda", "soft drink", "pop", "fizzy drink", "alchemical soda"));
     }
 
     private static <T> void addBaseSodaIngredients(IExtraIngredientRegistration registration,
