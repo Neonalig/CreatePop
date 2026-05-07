@@ -29,6 +29,18 @@ public final class CreatePopConfig {
                      "Range: 0.0 (no reduction) to 1.0 (full removal). Default: 1.0.")
             .defineInRange("amethystShardInstabilityReduction", 1.0, 0.0, 1.0);
 
+    public static final ModConfigSpec.DoubleValue BASE_POTION_INSTABILITY_GAIN = COMMON_BUILDER
+            .comment("Instability assigned when creating a soda base from carbonated water + potion.",
+                     "Higher values make instability ramp sooner across remix chains.",
+                     "Range: 0.0 to 2.0. Default: 0.18.")
+            .defineInRange("basePotionInstabilityGain", 0.18, 0.0, 2.0);
+
+    public static final ModConfigSpec.DoubleValue MIX_REACTION_INSTABILITY_GAIN = COMMON_BUILDER
+            .comment("Extra instability added per positive reaction resolved during soda remixing.",
+                     "Higher values make negative side effects appear after fewer mixes.",
+                     "Range: 0.0 to 2.0. Default: 0.30.")
+            .defineInRange("mixReactionInstabilityGain", 0.30, 0.0, 2.0);
+
     public static final ModConfigSpec COMMON_SPEC = COMMON_BUILDER.build();
 
     private CreatePopConfig() {
@@ -48,6 +60,14 @@ public final class CreatePopConfig {
 
     public static double amethystShardInstabilityReduction() {
         return AMETHYST_SHARD_INSTABILITY_REDUCTION.get();
+    }
+
+    public static double basePotionInstabilityGain() {
+        return BASE_POTION_INSTABILITY_GAIN.get();
+    }
+
+    public static double mixReactionInstabilityGain() {
+        return MIX_REACTION_INSTABILITY_GAIN.get();
     }
 }
 

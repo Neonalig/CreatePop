@@ -49,7 +49,9 @@ public final class SodaFluidStackHelper {
     }
 
     public static FluidStack sodaBucketFluid(ItemStack stack) {
-        return soda(FluidType.BUCKET_VOLUME, getSodaData(stack));
+        FluidStack fluid = soda(FluidType.BUCKET_VOLUME, getSodaData(stack));
+        copyStabiliser(stack, fluid);
+        return fluid;
     }
 
     public static ItemStack sodaBottle(FluidStack stack) {
@@ -68,11 +70,20 @@ public final class SodaFluidStackHelper {
     }
 
     public static FluidStack sodaBottleFluid(ItemStack stack) {
-        return soda(org.neonalig.createpop.compat.create.DynamicSodaMixing.DRINK_AMOUNT, getSodaData(stack));
+        FluidStack fluid = soda(org.neonalig.createpop.compat.create.DynamicSodaMixing.DRINK_AMOUNT, getSodaData(stack));
+        copyStabiliser(stack, fluid);
+        return fluid;
     }
 
     public static SodaData getSodaData(ItemStack stack) {
         return stack.getOrDefault(ModDataComponents.SODA_DATA.get(), SodaData.EMPTY);
+    }
+
+    private static void copyStabiliser(ItemStack source, FluidStack target) {
+        String stabiliser = source.get(ModDataComponents.SODA_STABILISER.get());
+        if (stabiliser != null && !stabiliser.isBlank()) {
+            target.set(ModDataComponents.SODA_STABILISER.get(), stabiliser);
+        }
     }
 }
 

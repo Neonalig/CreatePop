@@ -7,6 +7,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -90,7 +91,7 @@ public final class ModCommonEvents {
                     foundAmethyst = true;
                 }
 
-                String stabiliser = stack.get(ModDataComponents.SODA_STABILISER.get());
+                String stabiliser = resolveStabiliser(stack);
                 if ("acacia".equals(stabiliser)) {
                     foundAcacia = true;
                 }
@@ -128,6 +129,21 @@ public final class ModCommonEvents {
             CreatePopAdvancementGrants.grantStabilisedWithMagmaCream(player);
             ModTriggers.STABILISED_WITH_MAGMA_CREAM.trigger(player);
         }
+    }
+
+    private static String resolveStabiliser(ItemStack stack) {
+        String fromItem = stack.get(ModDataComponents.SODA_STABILISER.get());
+        if (fromItem != null && !fromItem.isBlank()) {
+            return fromItem;
+        }
+
+        FluidStack contained = FluidStack.EMPTY;
+        if (stack.is(ModFluids.SODA_BOTTLE.get())) {
+            contained = SodaFluidStackHelper.sodaBottleFluid(stack);
+        } else if (stack.is(ModFluids.SODA_BUCKET.get())) {
+            contained = SodaFluidStackHelper.sodaBucketFluid(stack);
+        }
+        return contained.isEmpty() ? null : contained.get(ModDataComponents.SODA_STABILISER.get());
     }
 
     private static void onItemPickup(ItemEntityPickupEvent.Post event) {

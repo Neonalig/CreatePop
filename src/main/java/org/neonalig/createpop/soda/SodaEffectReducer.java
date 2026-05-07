@@ -9,6 +9,7 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.alchemy.PotionContents;
+import org.neonalig.createpop.CreatePopConfig;
 import org.neonalig.createpop.component.SodaData;
 
 import java.nio.charset.StandardCharsets;
@@ -23,8 +24,8 @@ import java.util.Optional;
 import java.util.Set;
 
 public final class SodaEffectReducer {
-    public static final float BASE_INSTABILITY = 0.1f;
-    public static final float POSITIVE_MIX_INSTABILITY = 0.18f;
+    public static final float DEFAULT_BASE_INSTABILITY_GAIN = 0.18f;
+    public static final float DEFAULT_MIX_REACTION_INSTABILITY_GAIN = 0.30f;
     public static final float INSTABILITY_THRESHOLD = 0.8f;
     public static final float SAFE_INSTABILITY = 0.35f;
     public static final float REACTION_AFFINITY_THRESHOLD = 0.30f;
@@ -97,7 +98,7 @@ public final class SodaEffectReducer {
     }
 
     public static SodaData baseFromPotion(List<MobEffectInstance> effects, int color) {
-        return new SodaData(copyEffects(effects), color, BASE_INSTABILITY);
+        return new SodaData(copyEffects(effects), color, baseInstabilityGain());
     }
 
     public static List<MobEffectInstance> acceptedPotionEffects(PotionContents potion) {
@@ -133,7 +134,7 @@ public final class SodaEffectReducer {
         List<MobEffectInstance> combined = mergeWithDilution(first.effects(), second.effects(), firstAmount, secondAmount);
 
         Reduction reduction = resolveMix(combined, worldSeed);
-        float instability = first.instability() + second.instability() + reduction.positiveReductions() * POSITIVE_MIX_INSTABILITY;
+        float instability = first.instability() + second.instability() + reduction.positiveReductions() * mixReactionInstabilityGain();
         List<MobEffectInstance> resolved = reduction.effects();
 
         if (instability > INSTABILITY_THRESHOLD) {
@@ -442,6 +443,22 @@ public final class SodaEffectReducer {
         int g = ((((first >> 8) & 0xFF) * firstWeight) + (((second >> 8) & 0xFF) * secondWeight)) / totalWeight;
         int b = (((first & 0xFF) * firstWeight) + ((second & 0xFF) * secondWeight)) / totalWeight;
         return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
+    private static float baseInstabilityGain() {
+        try {
+            return (float) CreatePopConfig.basePotionInstabilityGain();
+        } catch (IllegalStateException ignored) {
+            return DEFAULT_BASE_INSTABILITY_GAIN;
+        }
+    }
+
+    private static float mixReactionInstabilityGain() {
+        try {
+            return (float) CreatePopConfig.mixReactionInstabilityGain();
+        } catch (IllegalStateException ignored) {
+            return DEFAULT_MIX_REACTION_INSTABILITY_GAIN;
+        }
     }
 
     private record Reduction(List<MobEffectInstance> effects, int positiveReductions) {
