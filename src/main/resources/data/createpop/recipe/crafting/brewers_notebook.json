@@ -6,7 +6,7 @@
       "item": "minecraft:writable_book"
     },
     {
-      "item": "createpop:soda_bottle"
+      "tag": "createpop:soda_bottles"
     }
   ],
   "result": {

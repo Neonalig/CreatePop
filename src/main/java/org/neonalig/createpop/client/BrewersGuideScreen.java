@@ -640,11 +640,11 @@ public class BrewersGuideScreen extends Screen {
                                 paragraph(
                                         text("createpop.brewers_guide.section.instability.line2.prefix", INK),
                                         itemUseLink(acacia, acacia.getHoverName()),
-                                        text("createpop.brewers_guide.section.instability.line2.middle1", INK, percent(CreatePopConfig.acaciaLogInstabilityReduction())),
+                                        text("createpop.brewers_guide.section.instability.line2.middle1", INK, instabilityAmount(CreatePopConfig.acaciaLogInstabilityReduction())),
                                         itemUseLink(magmaCream, magmaCream.getHoverName()),
-                                        text("createpop.brewers_guide.section.instability.line2.middle2", INK, percent(CreatePopConfig.magmaCreamInstabilityReduction())),
+                                        text("createpop.brewers_guide.section.instability.line2.middle2", INK, instabilityAmount(CreatePopConfig.magmaCreamInstabilityReduction())),
                                         itemUseLink(amethyst, amethyst.getHoverName()),
-                                        text("createpop.brewers_guide.section.instability.line2.suffix", INK, percent(CreatePopConfig.amethystShardInstabilityReduction()))
+                                        text("createpop.brewers_guide.section.instability.line2.suffix", INK, instabilityAmount(CreatePopConfig.amethystShardInstabilityReduction()))
                                 ),
                                 paragraph(text("createpop.brewers_guide.section.instability.line3", MUTED)),
                                 paragraph(text("createpop.brewers_guide.section.instability.line4", MUTED))
@@ -687,8 +687,8 @@ public class BrewersGuideScreen extends Screen {
         return Component.translatable(key, args);
     }
 
-    private String percent(double value) {
-        return String.format(Locale.ROOT, "%.0f%%", value * 100.0D);
+    private String instabilityAmount(double value) {
+        return String.format(Locale.ROOT, "%.2f", value);
     }
 
     private List<String> tokenize(String text) {

@@ -535,17 +535,17 @@ public class CreatePopJeiPlugin implements IModPlugin {
     private static List<RecipeHolder<BasinRecipe>> buildStabilisationHintRecipes() {
         float demoInstability = 1.0f;
         SodaData demoInput = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability);
-        FluidStack unstable = sodaForJei(demoInput);
+        FluidStack unstable = sodaForJei(demoInput, DynamicSodaMixing.STABILISATION_AMOUNT);
 
         List<RecipeHolder<BasinRecipe>> recipes = new ArrayList<>();
         List<PotionBaseData> potionBases = collectPotionBases();
 
         double acaciaReduction = CreatePopConfig.acaciaLogInstabilityReduction();
         if (acaciaReduction > 0.0) {
-            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) acaciaReduction));
+            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, Math.max(0f, demoInstability - (float) acaciaReduction));
             recipes.add(recipeHolder(
                     ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/acacia_log"),
-                    sodaForJei(output),
+                    sodaForJei(output, DynamicSodaMixing.STABILISATION_AMOUNT),
                     List.of(exactFluid(unstable)),
                     HeatCondition.HEATED,
                     Ingredient.of(Items.STRIPPED_ACACIA_LOG)
@@ -554,10 +554,10 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
         double magmaReduction = CreatePopConfig.magmaCreamInstabilityReduction();
         if (magmaReduction > 0.0) {
-            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) magmaReduction));
+            SodaData output = new SodaData(List.of(), SodaData.DEFAULT_COLOR, Math.max(0f, demoInstability - (float) magmaReduction));
             recipes.add(recipeHolder(
                     ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/magma_cream"),
-                    sodaForJei(output),
+                    sodaForJei(output, DynamicSodaMixing.STABILISATION_AMOUNT),
                     List.of(exactFluid(unstable)),
                     HeatCondition.HEATED,
                     Ingredient.of(Items.MAGMA_CREAM)
@@ -571,8 +571,8 @@ public class CreatePopJeiPlugin implements IModPlugin {
                 SodaData output = SodaEffectReducer.purifyWithAmethyst(unstableBase);
                 recipes.add(recipeHolder(
                         ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/00_stabilise/amethyst_shard_" + base.id().getPath()),
-                        sodaForJei(output),
-                        List.of(exactFluid(sodaForJei(unstableBase))),
+                        sodaForJei(output, DynamicSodaMixing.STABILISATION_AMOUNT),
+                        List.of(exactFluid(sodaForJei(unstableBase, DynamicSodaMixing.STABILISATION_AMOUNT))),
                         HeatCondition.SUPERHEATED,
                         Ingredient.of(Items.AMETHYST_SHARD)
                 ));
@@ -596,7 +596,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
                 CreatePopConfig.amethystShardInstabilityReduction()
         )) {
             if (reduction > 0.0) {
-                addSodaVariant(unique, new SodaData(List.of(), SodaData.DEFAULT_COLOR, demoInstability * (1f - (float) reduction)));
+                addSodaVariant(unique, new SodaData(List.of(), SodaData.DEFAULT_COLOR, Math.max(0f, demoInstability - (float) reduction)));
             }
         }
 
@@ -652,7 +652,11 @@ public class CreatePopJeiPlugin implements IModPlugin {
     }
 
     private static FluidStack sodaForJei(SodaData data) {
-        FluidStack soda = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, data);
+        return sodaForJei(data, DynamicSodaMixing.DRINK_AMOUNT);
+    }
+
+    private static FluidStack sodaForJei(SodaData data, int amount) {
+        FluidStack soda = SodaFluidStackHelper.soda(amount, data);
         var minecraft = Minecraft.getInstance();
         var entry = minecraft.player == null ? null : BrewingDiscoveryManager.knownEntry(minecraft.player, data);
         String sodaName = entry == null ? null : entry.name();
