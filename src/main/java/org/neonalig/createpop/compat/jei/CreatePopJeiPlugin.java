@@ -27,6 +27,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.DataComponentFluidIngredient;
@@ -44,6 +45,7 @@ import org.neonalig.createpop.soda.SodaFluidStackHelper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JEI plugin for CreatePop.
@@ -65,10 +67,12 @@ public class CreatePopJeiPlugin implements IModPlugin {
     private IPlatformFluidHelper<?> platformFluidHelper;
     private IJeiRuntime jeiRuntime;
     private final List<RecipeHolder<BasinRecipe>> injectedRecipes = new ArrayList<>();
+    private Boolean lastHintsEnabled;
 
     public CreatePopJeiPlugin() {
         NeoForge.EVENT_BUS.addListener(this::onClientLogin);
         NeoForge.EVENT_BUS.addListener(this::onClientLogout);
+        NeoForge.EVENT_BUS.addListener(this::onClientTick);
     }
 
     @Override
@@ -134,6 +138,15 @@ public class CreatePopJeiPlugin implements IModPlugin {
         clearInjectedRecipes();
     }
 
+    private void onClientTick(ClientTickEvent.Post event) {
+        boolean hintsEnabled = isHintsEnabledSafe();
+        if (lastHintsEnabled != null && hintsEnabled == lastHintsEnabled) {
+            return;
+        }
+        lastHintsEnabled = hintsEnabled;
+        refreshRuntimeRecipes();
+    }
+
 
     private void refreshRuntimeRecipes() {
         if (jeiRuntime == null) {
@@ -142,7 +155,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
 
         clearInjectedRecipes();
 
-        if (!CreatePopConfig.enableJeiPotionHints()) {
+        if (!isHintsEnabledSafe()) {
             return;
         }
 
@@ -159,6 +172,15 @@ public class CreatePopJeiPlugin implements IModPlugin {
         injectedRecipes.addAll(recipes);
     }
 
+    private static boolean isHintsEnabledSafe() {
+        try {
+            return CreatePopConfig.enableJeiPotionHints();
+        } catch (IllegalStateException ignored) {
+            // JEI/plugin setup can run before config load; defer toggling until config is ready.
+            return true;
+        }
+    }
+
     private void clearInjectedRecipes() {
         if (jeiRuntime == null || injectedRecipes.isEmpty()) {
             return;
@@ -170,15 +192,8 @@ public class CreatePopJeiPlugin implements IModPlugin {
     private static List<RecipeHolder<BasinRecipe>> buildPotionBaseRecipes(List<PotionBaseData> potionBases) {
         List<RecipeHolder<BasinRecipe>> recipes = new ArrayList<>();
         for (PotionBaseData base : potionBases) {
-            FluidStack output = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, base.sodaData());
+            FluidStack output = sodaForJei(base.sodaData());
             SizedFluidIngredient carbonated = exactFluid(SodaFluidStackHelper.carbonatedWater(DynamicSodaMixing.DRINK_AMOUNT));
-
-            recipes.add(recipeHolder(
-                    ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/potion_base/" + base.id().getPath() + "_item"),
-                    output,
-                    List.of(carbonated),
-                    Ingredient.of(base.potionItem())
-            ));
 
             FluidStack potionFluid = potionFluid(base.contents());
             if (!potionFluid.isEmpty()) {
@@ -196,21 +211,14 @@ public class CreatePopJeiPlugin implements IModPlugin {
         List<RecipeHolder<BasinRecipe>> recipes = new ArrayList<>();
         for (int i = 0; i < potionBases.size(); i++) {
             PotionBaseData first = potionBases.get(i);
-            FluidStack firstSoda = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, first.sodaData());
+            FluidStack firstSoda = sodaForJei(first.sodaData());
 
             for (int j = i + 1; j < potionBases.size(); j++) {
                 PotionBaseData second = potionBases.get(j);
                 SodaData outputData = SodaEffectReducer.mix(first.sodaData(), second.sodaData(), DynamicSodaMixing.DRINK_AMOUNT, DynamicSodaMixing.DRINK_AMOUNT, worldSeed);
-                FluidStack output = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, outputData);
+                FluidStack output = sodaForJei(outputData);
 
                 String key = first.id().getPath() + "__" + second.id().getPath();
-                recipes.add(recipeHolder(
-                        ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/hint/" + key + "_potion_item"),
-                        output,
-                        List.of(exactFluid(firstSoda)),
-                        Ingredient.of(second.potionItem())
-                ));
-
                 FluidStack potionFluid = potionFluid(second.contents());
                 if (!potionFluid.isEmpty()) {
                     recipes.add(recipeHolder(
@@ -220,7 +228,7 @@ public class CreatePopJeiPlugin implements IModPlugin {
                     ));
                 }
 
-                FluidStack secondSoda = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, second.sodaData());
+                FluidStack secondSoda = sodaForJei(second.sodaData());
                 recipes.add(recipeHolder(
                         ResourceLocation.fromNamespaceAndPath(CreatePop.MODID, "jei/hint/" + key + "_soda"),
                         output,
@@ -291,6 +299,14 @@ public class CreatePopJeiPlugin implements IModPlugin {
         FluidStack stack = new FluidStack(fluid, DynamicSodaMixing.DRINK_AMOUNT);
         stack.set(DataComponents.POTION_CONTENTS, contents);
         return stack;
+    }
+
+    private static FluidStack sodaForJei(SodaData data) {
+        FluidStack soda = SodaFluidStackHelper.soda(DynamicSodaMixing.DRINK_AMOUNT, data);
+        // Attach potion-like tooltip data so JEI fluid tooltips expose effects for preview stacks.
+        PotionContents tooltipContents = new PotionContents(Optional.empty(), Optional.of(data.color() & 0x00FFFFFF), SodaEffectReducer.copyEffects(data.effects()));
+        soda.set(DataComponents.POTION_CONTENTS, tooltipContents);
+        return soda;
     }
 
     private static long resolveClientSeed() {
