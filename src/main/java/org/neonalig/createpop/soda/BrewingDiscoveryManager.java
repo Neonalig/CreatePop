@@ -192,6 +192,37 @@ public final class BrewingDiscoveryManager {
         return added;
     }
 
+    public static int addLearnedRecipeToNotebook(Player player, ItemStack notebook, SodaData data) {
+        BrewersNotebookData existing = notebookData(notebook);
+        String key = BrewersNotebookData.keyFor(data);
+        if (existing.containsKey(key)) {
+            return 0;
+        }
+
+        BrewersNotebookData.Entry playerEntry = knownEntry(player, data);
+        if (playerEntry != null) {
+            BrewersNotebookData updated = existing.withEntry(data, playerEntry.name(), playerEntry.ingredients());
+            setNotebookData(notebook, updated);
+            return 1;
+        }
+        return 0;
+    }
+
+    public static void removeNotebookEntry(ItemStack notebook, String key) {
+        BrewersNotebookData data = notebookData(notebook);
+        setNotebookData(notebook, data.withoutEntry(key));
+    }
+
+    public static void updateNotebookEntryNote(ItemStack notebook, String key, String note) {
+        BrewersNotebookData data = notebookData(notebook);
+        BrewersNotebookData.Entry entry = data.entryMap().get(key);
+        if (entry != null) {
+            Map<String, BrewersNotebookData.Entry> updated = new LinkedHashMap<>(data.entryMap());
+            updated.put(key, new BrewersNotebookData.Entry(entry.key(), entry.data(), entry.name(), entry.ingredients(), note));
+            setNotebookData(notebook, BrewersNotebookData.fromEntryMap(updated));
+        }
+    }
+
     public static void mergeNotebookStacks(ItemStack output, ItemStack first, ItemStack second) {
         BrewersNotebookData merged = notebookData(first).merge(notebookData(second));
         setNotebookData(output, merged);
@@ -225,14 +256,14 @@ public final class BrewingDiscoveryManager {
         BrewersNotebookData.Entry existing = known.entryMap().get(key);
         if (existing != null) {
             Map<String, BrewersNotebookData.Entry> updated = new LinkedHashMap<>(known.entryMap());
-            updated.put(key, new BrewersNotebookData.Entry(existing.key(), existing.data(), trimmed, existing.ingredients()));
+            updated.put(key, new BrewersNotebookData.Entry(existing.key(), existing.data(), trimmed, existing.ingredients(), existing.note()));
             setPlayerData(player, BrewersNotebookData.fromEntryMap(updated));
         }
 
         updateInventoryNotebooksForKey(player, key, trimmed);
     }
 
-    private static BrewersNotebookData playerData(Player player) {
+    public static BrewersNotebookData playerData(Player player) {
         CompoundTag root = player.getPersistentData();
         if (!root.contains(PLAYER_RECIPES_TAG, Tag.TAG_LIST)) {
             return BrewersNotebookData.EMPTY;
@@ -321,7 +352,7 @@ public final class BrewingDiscoveryManager {
             return;
         }
         Map<String, BrewersNotebookData.Entry> updated = new LinkedHashMap<>(data.entryMap());
-        updated.put(key, new BrewersNotebookData.Entry(entry.key(), entry.data(), name, entry.ingredients()));
+        updated.put(key, new BrewersNotebookData.Entry(entry.key(), entry.data(), name, entry.ingredients(), entry.note()));
         setNotebookData(stack, BrewersNotebookData.fromEntryMap(updated));
     }
 

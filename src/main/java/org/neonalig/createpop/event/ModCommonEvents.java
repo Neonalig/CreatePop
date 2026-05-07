@@ -7,6 +7,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import org.neonalig.createpop.component.BrewersNotebookData;
 import org.neonalig.createpop.registry.ModItems;
 import org.neonalig.createpop.soda.BrewingDiscoveryManager;
 
@@ -46,7 +47,18 @@ public final class ModCommonEvents {
         }
 
         java.util.List<String> learnedNames = BrewingDiscoveryManager.learnNamesFromBlock(player, player.level(), event.getPos(), event.getFace());
-        BrewingDiscoveryManager.writePlayerRecipesToNotebook(player, stack);
+
+        // Add only the newly learned recipes to the notebook
+        for (String learnedName : learnedNames) {
+            BrewersNotebookData.Entry entry = BrewingDiscoveryManager.playerData(player).entries().stream()
+                    .filter(e -> learnedName.equals(e.name()))
+                    .findFirst()
+                    .orElse(null);
+            if (entry != null) {
+                BrewingDiscoveryManager.addLearnedRecipeToNotebook(player, stack, entry.data());
+            }
+        }
+
         if (learnedNames.size() == 1) {
             player.displayClientMessage(Component.translatable("item.createpop.brewers_notebook.learned_named", learnedNames.get(0)), true);
         } else if (!learnedNames.isEmpty()) {

@@ -19,6 +19,7 @@ import net.minecraft.world.item.component.WrittenBookContent;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import org.neonalig.createpop.component.BrewersNotebookData;
+import org.neonalig.createpop.component.SodaData;
 import org.neonalig.createpop.soda.BrewingDiscoveryManager;
 import org.neonalig.createpop.soda.SodaTextHelper;
 
@@ -84,7 +85,7 @@ public class BrewersNotebookItem extends WrittenBookItem {
 
         pages.add(page(Component.literal("Brewer's Notebook\n\n")
                 .append(Component.translatable("item.createpop.brewers_notebook.entry_count", data.size()))
-                .append(Component.literal("\n\nShift + Right Click in air to sync your learned recipes into this notebook."))));
+                .append(Component.literal("\n\nShift + Right Click a vessel with mixed soda to add that specific recipe to your notebook."))));
 
         if (data.isEmpty()) {
             pages.add(page(Component.literal("No recipes recorded yet.\n\n")
@@ -96,52 +97,140 @@ public class BrewersNotebookItem extends WrittenBookItem {
             int contentsPages = (entries.size() + perContentsPage - 1) / perContentsPage;
             recipesStartPage += contentsPages;
 
+            // Build contents pages first to determine page numbers
+            List<Integer> recipeStartPages = new ArrayList<>();
+            int currentPage = recipesStartPage;
+            for (BrewersNotebookData.Entry entry : entries) {
+                recipeStartPages.add(currentPage);
+                int recipePageCount = buildRecipePages(entry).size();
+                currentPage += recipePageCount;
+            }
+
+            // Now build the contents table with correct page numbers
             for (int i = 0; i < contentsPages; i++) {
                 MutableComponent contents = Component.literal("Contents\n\n");
                 int start = i * perContentsPage;
                 int end = Math.min(entries.size(), start + perContentsPage);
                 for (int index = start; index < end; index++) {
-                    int recipePage = recipesStartPage + index;
-                    contents.append(linkLine(entries.get(index).name(), recipePage));
+                    int recipePage = recipeStartPages.get(index);
+                    contents.append(linkLine(entries.get(index).name(), entries.get(index).data(), recipePage));
                 }
                 pages.add(page(contents));
             }
 
+            // Build recipe pages
             for (int index = 0; index < entries.size(); index++) {
                 BrewersNotebookData.Entry entry = entries.get(index);
-                MutableComponent recipe = Component.literal(entry.name() + "\n\n")
-                        .append(Component.literal("Color: " + SodaTextHelper.formatColorHex(entry.data().color()) + "\n"))
-                        .append(Component.translatable("createpop.soda.tooltip.instability", String.format(java.util.Locale.ROOT, "%.2f", entry.data().instability())))
-                        .append(Component.literal("\n\nEffects:\n"));
-
-                if (entry.data().effects().isEmpty()) {
-                    recipe.append(Component.translatable("createpop.soda.tooltip.no_effects"));
-                } else {
-                    for (var effect : entry.data().effects()) {
-                        recipe.append(SodaTextHelper.formatEffect(effect)).append(Component.literal("\n"));
-                    }
-                }
-
-                recipe.append(Component.literal("\nIngredients:\n"));
-                if (entry.ingredients().isEmpty()) {
-                    recipe.append(Component.literal("Unknown (sampled soda)\n"));
-                } else {
-                    for (String ingredient : entry.ingredients()) {
-                        recipe.append(Component.literal("- " + ingredient + "\n"));
-                    }
-                }
-
-                pages.add(page(recipe));
+                pages.addAll(buildRecipePages(entry));
             }
         }
 
         return new WrittenBookContent(Filterable.passThrough("Brewer's Notebook"), "Create Pop", 0, pages, true);
     }
 
-    private static MutableComponent linkLine(String title, int page) {
+    /**
+     * Build one or more pages for a single recipe entry
+     */
+    private static List<Filterable<Component>> buildRecipePages(BrewersNotebookData.Entry entry) {
+        List<Filterable<Component>> pages = new ArrayList<>();
+        MutableComponent recipe = buildRecipeHeader(entry);
+
+        String note = entry.note().trim();
+        if (!note.isEmpty()) {
+            recipe.append(Component.literal("\n\nNotes:\n"));
+            // Split note into chunks that fit on a page
+            List<String> noteChunks = splitNoteForPages(note);
+
+            if (noteChunks.size() == 1) {
+                recipe.append(Component.literal(noteChunks.get(0)));
+                pages.add(page(recipe));
+            } else {
+                // First note chunk on main recipe page
+                recipe.append(Component.literal(noteChunks.get(0)));
+                pages.add(page(recipe));
+
+                // Additional pages for continuation
+                for (int i = 1; i < noteChunks.size(); i++) {
+                    MutableComponent continuation = Component.literal("📍 ")
+                            .withStyle(style -> style
+                                    .withColor(ChatFormatting.AQUA)
+                                    .withUnderlined(true)
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.CHANGE_PAGE, "2")))
+                            .append(Component.literal("\n\n" + entry.name() + " (continued)\n\n"))
+                            .append(Component.literal(noteChunks.get(i)));
+                    pages.add(page(continuation));
+                }
+            }
+        } else {
+            pages.add(page(recipe));
+        }
+
+        return pages;
+    }
+
+    private static MutableComponent buildRecipeHeader(BrewersNotebookData.Entry entry) {
+        int rgb = entry.data().rgbColor();
+        MutableComponent title = Component.literal(entry.name() + "\n")
+                .withColor(rgb);
+
+        MutableComponent instabilityText = Component.translatable(
+                "createpop.soda.tooltip.instability",
+                String.format(java.util.Locale.ROOT, "%.2f", entry.data().instability())
+        ).withColor(0xFFB347); // amber/orange
+
+        MutableComponent recipe = title
+                .append(Component.literal("Instability: "))
+                .append(instabilityText)
+                .append(Component.literal("\n\nEffects:\n"));
+
+        if (entry.data().effects().isEmpty()) {
+            recipe.append(Component.translatable("createpop.soda.tooltip.no_effects"));
+        } else {
+            for (var effect : entry.data().effects()) {
+                recipe.append(SodaTextHelper.formatEffect(effect)).append(Component.literal("\n"));
+            }
+        }
+
+        return recipe;
+    }
+
+    /**
+     * Split note text into chunks that fit reasonably on pages
+     * Approximate: 250 characters per page for wrapping
+     */
+    private static List<String> splitNoteForPages(String note) {
+        List<String> chunks = new ArrayList<>();
+        int charsPerPage = 250;
+        int start = 0;
+
+        while (start < note.length()) {
+            int end = Math.min(start + charsPerPage, note.length());
+
+            // Try to find a good break point (newline or space)
+            if (end < note.length()) {
+                int lastNewline = note.lastIndexOf('\n', end);
+                int lastSpace = note.lastIndexOf(' ', end);
+                int breakPoint = Math.max(lastNewline, lastSpace);
+                if (breakPoint > start) {
+                    end = breakPoint;
+                }
+            }
+
+            chunks.add(note.substring(start, end).trim());
+            start = end;
+            if (start < note.length() && note.charAt(start) == ' ') {
+                start++;
+            }
+        }
+
+        return chunks.isEmpty() ? List.of("") : chunks;
+    }
+
+    private static MutableComponent linkLine(String title, SodaData data, int page) {
+        int rgb = data.rgbColor();
         return Component.literal(title + "\n")
                 .withStyle(style -> style
-                        .withColor(ChatFormatting.AQUA)
+                        .withColor(rgb)
                         .withUnderlined(true)
                         .withClickEvent(new ClickEvent(ClickEvent.Action.CHANGE_PAGE, String.valueOf(page))));
     }

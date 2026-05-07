@@ -50,10 +50,11 @@ public record BrewersNotebookData(List<Entry> entries) {
         for (Entry incoming : other.entries) {
             merged.merge(incoming.key(), incoming, (current, next) -> {
                 String mergedName = current.name().isBlank() && !next.name().isBlank() ? next.name() : current.name();
+                String mergedNote = current.note().isEmpty() && !next.note().isEmpty() ? next.note() : current.note();
                 if (current.ingredients().isEmpty() && !next.ingredients().isEmpty()) {
-                    return new Entry(current.key(), current.data(), mergedName, next.ingredients());
+                    return new Entry(current.key(), current.data(), mergedName, next.ingredients(), mergedNote);
                 }
-                return new Entry(current.key(), current.data(), mergedName, current.ingredients());
+                return new Entry(current.key(), current.data(), mergedName, current.ingredients(), mergedNote);
             });
         }
         return fromEntryMap(merged);
@@ -77,6 +78,12 @@ public record BrewersNotebookData(List<Entry> entries) {
 
     public boolean containsKey(String key) {
         return entryMap().containsKey(key);
+    }
+
+    public BrewersNotebookData withoutEntry(String key) {
+        Map<String, Entry> updated = new LinkedHashMap<>(entryMap());
+        updated.remove(key);
+        return fromEntryMap(updated);
     }
 
     public static BrewersNotebookData fromMap(Map<String, SodaData> byKey) {
@@ -120,10 +127,11 @@ public record BrewersNotebookData(List<Entry> entries) {
         for (Entry entry : input) {
             merged.merge(entry.key(), entry, (current, next) -> {
                 String mergedName = current.name().isBlank() && !next.name().isBlank() ? next.name() : current.name();
+                String mergedNote = current.note().isEmpty() && !next.note().isEmpty() ? next.note() : current.note();
                 if (current.ingredients().isEmpty() && !next.ingredients().isEmpty()) {
-                    return new Entry(current.key(), current.data(), mergedName, next.ingredients());
+                    return new Entry(current.key(), current.data(), mergedName, next.ingredients(), mergedNote);
                 }
-                return new Entry(current.key(), current.data(), mergedName, current.ingredients());
+                return new Entry(current.key(), current.data(), mergedName, current.ingredients(), mergedNote);
             });
         }
         List<Entry> normalized = new ArrayList<>();
@@ -136,17 +144,23 @@ public record BrewersNotebookData(List<Entry> entries) {
         return List.copyOf(normalized);
     }
 
-    public record Entry(String key, SodaData data, String name, List<String> ingredients) {
+    public record Entry(String key, SodaData data, String name, List<String> ingredients, String note) {
         public Entry {
             name = name == null || name.isBlank() ? "Unnamed Soda" : name;
             ingredients = List.copyOf(ingredients);
+            note = note == null ? "" : note;
+        }
+
+        public Entry(String key, SodaData data, String name, List<String> ingredients) {
+            this(key, data, name, ingredients, "");
         }
 
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.fieldOf("key").forGetter(Entry::key),
                 SodaData.CODEC.fieldOf("data").forGetter(Entry::data),
                 Codec.STRING.optionalFieldOf("name", "Unnamed Soda").forGetter(Entry::name),
-                Codec.STRING.listOf().optionalFieldOf("ingredients", List.of()).forGetter(Entry::ingredients)
+                Codec.STRING.listOf().optionalFieldOf("ingredients", List.of()).forGetter(Entry::ingredients),
+                Codec.STRING.optionalFieldOf("note", "").forGetter(Entry::note)
         ).apply(instance, Entry::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
@@ -158,6 +172,8 @@ public record BrewersNotebookData(List<Entry> entries) {
                 Entry::name,
                 ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()),
                 Entry::ingredients,
+                ByteBufCodecs.STRING_UTF8,
+                Entry::note,
                 Entry::new
         );
     }

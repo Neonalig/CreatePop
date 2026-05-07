@@ -17,6 +17,8 @@ public final class ModPayloads {
         PayloadRegistrar registrar = event.registrar("1");
         registrar.playToClient(OpenSodaNamePromptPayload.TYPE, OpenSodaNamePromptPayload.STREAM_CODEC, ModPayloads::handleOpenPrompt);
         registrar.playToServer(SubmitSodaNamePayload.TYPE, SubmitSodaNamePayload.STREAM_CODEC, ModPayloads::handleSubmitName);
+        registrar.playToServer(RemoveNotebookEntryPayload.TYPE, RemoveNotebookEntryPayload.STREAM_CODEC, ModPayloads::handleRemoveEntry);
+        registrar.playToServer(UpdateNotebookNotePayload.TYPE, UpdateNotebookNotePayload.STREAM_CODEC, ModPayloads::handleUpdateNote);
     }
 
     private static void handleOpenPrompt(OpenSodaNamePromptPayload payload, IPayloadContext context) {
@@ -41,6 +43,48 @@ public final class ModPayloads {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer serverPlayer) {
                 BrewingDiscoveryManager.renameRecipe(serverPlayer, payload.sodaKey(), payload.chosenName());
+            }
+        });
+    }
+
+    private static void handleRemoveEntry(RemoveNotebookEntryPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer serverPlayer) {
+                // The player is holding a notebook and wants to remove an entry
+                // We need to find the notebook in their inventory
+                for (net.minecraft.world.item.ItemStack stack : serverPlayer.getInventory().items) {
+                    if (stack.is(org.neonalig.createpop.registry.ModItems.BREWERS_NOTEBOOK.get())) {
+                        BrewingDiscoveryManager.removeNotebookEntry(stack, payload.entryKey());
+                        return;
+                    }
+                }
+                for (net.minecraft.world.item.ItemStack stack : serverPlayer.getInventory().offhand) {
+                    if (stack.is(org.neonalig.createpop.registry.ModItems.BREWERS_NOTEBOOK.get())) {
+                        BrewingDiscoveryManager.removeNotebookEntry(stack, payload.entryKey());
+                        return;
+                    }
+                }
+            }
+        });
+    }
+
+    private static void handleUpdateNote(UpdateNotebookNotePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer serverPlayer) {
+                // The player is holding a notebook and wants to update a note
+                // We need to find the notebook in their inventory
+                for (net.minecraft.world.item.ItemStack stack : serverPlayer.getInventory().items) {
+                    if (stack.is(org.neonalig.createpop.registry.ModItems.BREWERS_NOTEBOOK.get())) {
+                        BrewingDiscoveryManager.updateNotebookEntryNote(stack, payload.entryKey(), payload.note());
+                        return;
+                    }
+                }
+                for (net.minecraft.world.item.ItemStack stack : serverPlayer.getInventory().offhand) {
+                    if (stack.is(org.neonalig.createpop.registry.ModItems.BREWERS_NOTEBOOK.get())) {
+                        BrewingDiscoveryManager.updateNotebookEntryNote(stack, payload.entryKey(), payload.note());
+                        return;
+                    }
+                }
             }
         });
     }
