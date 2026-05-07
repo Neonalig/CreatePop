@@ -17,6 +17,7 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import org.neonalig.createpop.CreatePop;
+import org.neonalig.createpop.soda.CarbonatedWaterBottleItem;
 import org.neonalig.createpop.soda.SodaBottleItem;
 import org.neonalig.createpop.soda.SodaBucketItem;
 import org.neonalig.createpop.soda.SodaFluidType;
@@ -63,6 +64,10 @@ public final class ModFluids {
     public static final DeferredItem<BucketItem> CARBONATED_WATER_BUCKET = CreatePop.ITEMS.register(
             "carbonated_water_bucket",
             () -> new BucketItem(CARBONATED_WATER.get(), new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1))
+    );
+    public static final DeferredItem<CarbonatedWaterBottleItem> CARBONATED_WATER_BOTTLE = CreatePop.ITEMS.register(
+            "carbonated_water_bottle",
+            () -> new CarbonatedWaterBottleItem(new Item.Properties().stacksTo(16))
     );
     public static final DeferredItem<BucketItem> SODA_BUCKET = CreatePop.ITEMS.register(
             "soda_bucket",

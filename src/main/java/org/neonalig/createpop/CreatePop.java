@@ -35,6 +35,7 @@ public class CreatePop {
             .icon(() -> ModFluids.SODA_BUCKET.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
                 output.accept(ModFluids.CARBONATED_WATER_BUCKET.get());
+                output.accept(ModFluids.CARBONATED_WATER_BOTTLE.get());
                 output.accept(ModFluids.SODA_BUCKET.get());
                 output.accept(ModFluids.SODA_BOTTLE.get());
             })
@@ -49,8 +50,7 @@ public class CreatePop {
         modContainer.registerConfig(ModConfig.Type.CLIENT, CreatePopConfig.CLIENT_SPEC);
         modEventBus.addListener(ModCapabilities::registerCapabilities);
         NeoForge.EVENT_BUS.addListener(SodaDebugCommand::register);
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            IConfigScreenFactory configScreenFactory = ConfigurationScreen::new;
+        if (FMLEnvironment.dist == Dist.CLIENT) {IConfigScreenFactory configScreenFactory = ConfigurationScreen::new;
             modContainer.registerExtensionPoint(IConfigScreenFactory.class, configScreenFactory);
             ModClientEvents.register(modEventBus);
         }
