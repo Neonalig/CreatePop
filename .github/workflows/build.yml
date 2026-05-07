@@ -4,7 +4,13 @@ on:
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'CreatePop/**'
+      - 'src/**'
+      - 'gradle/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'gradlew'
+      - 'gradlew.bat'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -25,15 +31,13 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
 
     - name: Make gradlew executable
-      working-directory: ./CreatePop
       run: chmod +x ./gradlew
 
     - name: Build with Gradle
-      working-directory: ./CreatePop
       run: ./gradlew build
 
     - name: Determine Primary Jar
-      working-directory: ./CreatePop/build/libs
+      working-directory: ./build/libs
       run: |
         PRIMARY_JAR=$(ls *.jar | grep -vE -- '-sources|-dev|-api|-slim' | head -n 1)
         echo "JAR_FILENAME=$PRIMARY_JAR" >> $GITHUB_ENV
@@ -43,5 +47,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ARTIFACT_NAME }}
-        path: CreatePop/build/libs/${{ env.JAR_FILENAME }}
+        path: build/libs/${{ env.JAR_FILENAME }}
         if-no-files-found: error
